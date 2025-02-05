@@ -79,6 +79,27 @@ class WaveletDecomposer:
         k = 2 * jnp.pi * jnp.sqrt(self.k_squared)
         filter_window = self.top_hat_window_fourier(k * window_radius)
         return filter_window
+    
+    def get_th_smooth_map(self, map, window_radius: float):
+        """
+        Retrieve or compute the top-hat filter in Fourier space for a given radius.
+
+        Parameters:
+        -----------
+        window_radius : float
+            The radius for the top-hat filter in Fourier space.
+
+        Returns:
+        --------
+        np.ndarray
+            The top-hat filter for the specified radius.
+        """
+        self.set_size_dependent_params(map.shape)
+        self.set_image(map)
+        filter_window = self.get_top_hat_filter(window_radius)
+        mapft = self.field_ft * filter_window
+        map_smooth = ifft2(mapft).real
+        return map_smooth
 
     def decompose_with_tophat(self) -> np.ndarray:
         """

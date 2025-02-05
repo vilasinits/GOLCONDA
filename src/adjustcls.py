@@ -129,9 +129,34 @@ class PowerSpectrumAdjuster:
 
         return adjusted_map
 
-
-
 class PowerSpectrum:
+    """
+    Class for calculating power spectrum and generating fields with target power spectrum.
+
+    Args:
+        map (ndarray): Input map.
+        pixelsize (float): Size of each pixel in degrees.
+
+    Attributes:
+        pixelsize (float): Size of each pixel in degrees.
+        map_size (int): Size of the input map.
+        ell_min (float): Minimum value of ell.
+        ell_max (float): Maximum value of ell.
+        deltaell (int): Interval between ell values.
+        nbinsell (int): Number of ell bins.
+        pixel_size_rad_perpixel (float): Pixel size in radians per pixel.
+        lpix (float): Value of lpix.
+        lx (ndarray): Array of lx values.
+        ly (ndarray): Array of ly values.
+        l (ndarray): Array of l values.
+        ell_edges (ndarray): Array of ell bin edges.
+
+    Methods:
+        calculate_Cls(map): Calculates the power spectrum (Cls) of the input map.
+        generate_field_with_target_cls(input_field, target_cls, target_ells): Generates a field with the target power spectrum.
+
+    """
+
     def __init__(self, map, pixelsize):
         self.pixelsize = pixelsize
         self.map_size = map.shape[0]
@@ -145,11 +170,18 @@ class PowerSpectrum:
         self.ly = fftfreq(self.map_size) * self.map_size * self.lpix
         self.l = jnp.sqrt(self.lx[np.newaxis, :] ** 2 + self.ly[:, np.newaxis] ** 2)
         self.ell_edges = jnp.linspace(self.ell_min, self.ell_max, num=self.nbinsell + 1)
-        # print("ell_min: ", self.ell_min)
-        # print("ell_max: ", self.ell_max)
-        # print(" ")
 
     def calculate_Cls(self, map):
+        """
+        Calculates the power spectrum (Cls) of the input map.
+
+        Args:
+            map (ndarray): Input map.
+
+        Returns:
+            tuple: A tuple containing the ell edges, ell bins, and Cls values.
+
+        """
         map_ft = rfft2(map)
         power_spectrum = jnp.abs(map_ft) ** 2
 
@@ -170,6 +202,22 @@ class PowerSpectrum:
         return self.ell_edges, ell_bins, cls_values * normalization
 
     def generate_field_with_target_cls(self, input_field, target_cls, target_ells):
+        """
+        Generates a field with the target power spectrum.
+
+        Args:
+            input_field (ndarray): Input field.
+            target_cls (ndarray): Target power spectrum values.
+            target_ells (ndarray): Corresponding ell values for the target power spectrum.
+
+        Returns:
+            ndarray: Generated field with the target power spectrum.
+
+        Raises:
+            AssertionError: If the lengths of target_cls and target_ells are not equal.
+            AssertionError: If any value in target_cls is negative.
+
+        """
         assert len(target_cls) == len(target_ells), "target_cls and target_ells must have the same length"
         assert jnp.all(target_cls >= 0), "All target_cls values must be non-negative"
 
@@ -190,4 +238,21 @@ class PowerSpectrum:
         # Preserve phase and inverse transform
         adjusted_field_ft = adjusted_amplitude * jnp.exp(1j * jnp.angle(field_ft))
         return irfft2(adjusted_field_ft).real
+    
+if __name__ == "__main__":
+    # Generate a random input map
+    input_map = np.random.rand(256, 256)
+    pixelsize = 0.5  # Example pixel size in degrees
 
+    # Instantiate the PowerSpectrum class
+    power_spectrum_calculator = PowerSpectrum(input_map, pixelsize)
+
+    # Compute the power spectrum
+    ell_edges, ell_bins, cls_values = power_spectrum_calculator.calculate_Cls(input_map)
+    print("Power spectrum calculated:", cls_values)
+
+    # Generate a field with a target power spectrum
+    target_ells = np.linspace(ell_edges.min(), ell_edges.max(), len(cls_values))
+    target_cls = cls_values * 1.2  # Example modification of Cls values
+    generated_field = power_spectrum_calculator.generate_field_with_target_cls(input_map, target_cls, target_ells)
+    print("Generated field with target power spectrum.")

@@ -22,7 +22,7 @@ def calculate_histogram_l1norm(image, mask, nbins, density=False):
         mask = np.ones_like(image, dtype=bool)
         
     # Apply the mask to filter out invalid pixels
-    masked_image = image[mask]
+    masked_image = image[mask==1]
 
     # Define bin edges and centers
     if np.ndim(nbins) > 0:  # If nbins is an array, treat it as bin edges
@@ -211,7 +211,21 @@ def process_image(target, filter_type, nscales, nbins, decomposer_class, density
     return target_values
 
 def adjust_pixel_values(image, mask, targetvalues, density=False):
+    """
+    Adjusts the pixel values of an image based on target statistics.
 
+    Args:
+        image (ndarray): The input image.
+        mask (ndarray): The mask indicating valid pixels.
+        targetvalues (dict): The target statistics including 'binedges', 'histogram', and 'l1_norm'.
+        density (bool, optional): Flag indicating whether to use density scaling. Defaults to False.
+
+    Returns:
+        ndarray: The adjusted image.
+        float: The total error normalized by the maximum L1 norm target.
+
+    """
+    # Function body...
     # Retrieve target statistics
     binedges_target = targetvalues['binedges']
     if density:
