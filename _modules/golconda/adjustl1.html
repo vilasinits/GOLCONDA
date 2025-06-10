@@ -1,0 +1,430 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>golconda.adjustl1 &mdash; GOLCONDA 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            GOLCONDA
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../golconda.html">golconda package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">GOLCONDA</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">golconda.adjustl1</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for golconda.adjustl1</h1><div class="highlight"><pre>
+<span></span><span class="c1"># from utils.config import *</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<div class="viewcode-block" id="calculate_histogram_l1norm">
+<a class="viewcode-back" href="../../golconda.adjustl1.html#golconda.adjustl1.calculate_histogram_l1norm">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_histogram_l1norm</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">nbins</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the histogram and L1 norm of an image while accounting for a mask.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">        image (np.ndarray): The input image.</span>
+<span class="sd">        mask (np.ndarray): The mask to apply on the image (1 for valid pixels, 0 to ignore).</span>
+<span class="sd">        nbins (int or array-like): Number of bins or bin edges for the histogram.</span>
+<span class="sd">        density (bool): Whether to compute a density-normalized histogram.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        binedges (np.ndarray): The edges of the bins.</span>
+<span class="sd">        bincenters (np.ndarray): The center of each bin.</span>
+<span class="sd">        hist (np.ndarray): The histogram values for each bin.</span>
+<span class="sd">        bin_l1_norm (list): The L1 norm for each bin.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># If no mask is provided, assume all pixels are valid</span>
+    <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        
+    <span class="c1"># Apply the mask to filter out invalid pixels</span>
+    <span class="n">masked_image</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">mask</span><span class="o">==</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># Define bin edges and centers</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">ndim</span><span class="p">(</span><span class="n">nbins</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># If nbins is an array, treat it as bin edges</span>
+        <span class="n">binedges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">nbins</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>  <span class="c1"># Otherwise, generate bin edges using the range of the masked image</span>
+        <span class="n">binedges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">masked_image</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">masked_image</span><span class="p">),</span> <span class="n">nbins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="n">bincenters</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">binedges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">binedges</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+    
+    <span class="c1"># Calculate the histogram using only the masked pixels</span>
+    <span class="n">hist</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">masked_image</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">binedges</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="n">density</span><span class="p">)</span>
+    
+    <span class="c1"># Calculate the bin width (for normalization if density=True)</span>
+    <span class="n">bin_width</span> <span class="o">=</span> <span class="n">binedges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">binedges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">total_pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    
+    <span class="c1"># Digitize the masked image to determine bin membership</span>
+    <span class="n">digitized</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">masked_image</span><span class="p">,</span> <span class="n">binedges</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    
+    <span class="c1"># Calculate the L1 norm per bin</span>
+    <span class="n">bin_l1_norm</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">masked_image</span><span class="p">[</span><span class="n">digitized</span> <span class="o">==</span> <span class="n">i</span><span class="p">]))</span> <span class="o">/</span> <span class="p">(</span><span class="n">total_pixels</span> <span class="o">*</span> <span class="n">bin_width</span><span class="p">)</span> <span class="k">if</span> <span class="n">density</span> <span class="k">else</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">masked_image</span><span class="p">[</span><span class="n">digitized</span> <span class="o">==</span> <span class="n">i</span><span class="p">]))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">binedges</span><span class="p">))</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">binedges</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">bincenters</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">hist</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">bin_l1_norm</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="adjust_map_l1">
+<a class="viewcode-back" href="../../golconda.adjustl1.html#golconda.adjustl1.adjust_map_l1">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">adjust_map_l1</span><span class="p">(</span><span class="n">input_image</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">targetvalues</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adjusts wavelet coefficients of an input image to match the target histogram </span>
+<span class="sd">    and L1 norm per bin.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    - input_image (2D array): Input wavelet coefficient map for a given scale.</span>
+<span class="sd">    - mask (2D array): Boolean mask indicating which coefficients should be modified.</span>
+<span class="sd">    - targetvalues (dict): Dictionary containing target statistics:</span>
+<span class="sd">        - &#39;histogram&#39; (1D array): Target histogram (normalized to sum to 1).</span>
+<span class="sd">        - &#39;binedges&#39; (1D array): Bin edges.</span>
+<span class="sd">        - &#39;l1_norm&#39; (1D array): Target L1 norm per bin.</span>
+<span class="sd">        - &#39;bincenters&#39; (1D array): Bin centers.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    - adjusted_image (2D array): Adjusted wavelet coefficient map.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Retrieve target statistics</span>
+    <span class="n">bin_edges</span> <span class="o">=</span> <span class="n">targetvalues</span><span class="p">[</span><span class="s1">&#39;binedges&#39;</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="n">density</span><span class="p">:</span>
+        <span class="n">scaling_factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">input_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">input_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="n">bin_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">bin_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">scaling_factor</span> <span class="o">=</span> <span class="mi">1</span>
+        
+    <span class="n">target_histogram</span> <span class="o">=</span> <span class="n">targetvalues</span><span class="p">[</span><span class="s1">&#39;histogram&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">scaling_factor</span>
+    <span class="n">target_l1_norm</span> <span class="o">=</span> <span class="n">targetvalues</span><span class="p">[</span><span class="s1">&#39;l1_norm&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">scaling_factor</span>
+    
+    <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">input_image</span><span class="p">)</span>
+        
+    <span class="c1"># Extract coefficients using the mask</span>
+    <span class="n">totpixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">input_image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">totmaskedpixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+    <span class="n">mask_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>  <span class="c1"># Indices of valid (non-zero mask) pixels</span>
+
+    <span class="n">ratio_masked_field</span> <span class="o">=</span> <span class="n">totmaskedpixels</span> <span class="o">/</span> <span class="n">totpixels</span>
+    
+    <span class="n">input_masked</span> <span class="o">=</span> <span class="n">input_image</span><span class="p">[</span><span class="n">mask_indices</span><span class="p">]</span>
+    <span class="n">sorted_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">input_masked</span><span class="p">)</span>
+    
+    <span class="n">start_idx</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">num_bins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">target_histogram</span><span class="p">)</span>
+    
+    <span class="n">total_l1_error</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">bin_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_bins</span><span class="p">):</span>
+        <span class="c1"># Compute the number of coefficients to allocate to this bin</span>
+        <span class="n">num_coeffs_in_bin</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">target_histogram</span><span class="p">[</span><span class="n">bin_idx</span><span class="p">]</span> <span class="o">*</span> <span class="n">ratio_masked_field</span><span class="p">)</span>
+        <span class="n">end_idx</span> <span class="o">=</span> <span class="n">start_idx</span> <span class="o">+</span> <span class="n">num_coeffs_in_bin</span>
+
+        <span class="c1"># Ensure the last bin includes all remaining coefficients</span>
+        <span class="k">if</span> <span class="n">bin_idx</span> <span class="o">==</span> <span class="n">num_bins</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">end_idx</span> <span class="o">=</span> <span class="n">totmaskedpixels</span>
+        <span class="k">elif</span> <span class="n">end_idx</span> <span class="o">&gt;</span> <span class="n">totmaskedpixels</span><span class="p">:</span>
+            <span class="n">end_idx</span> <span class="o">=</span> <span class="n">totmaskedpixels</span>
+
+        <span class="c1"># Get bin boundaries and target L1 norm</span>
+        <span class="n">bin_min</span> <span class="o">=</span> <span class="n">bin_edges</span><span class="p">[</span><span class="n">bin_idx</span><span class="p">]</span>
+        <span class="n">bin_max</span> <span class="o">=</span> <span class="n">bin_edges</span><span class="p">[</span><span class="n">bin_idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">target_l1_bin</span> <span class="o">=</span> <span class="n">target_l1_norm</span><span class="p">[</span><span class="n">bin_idx</span><span class="p">]</span> <span class="o">*</span> <span class="n">ratio_masked_field</span>
+
+        <span class="k">if</span> <span class="n">num_coeffs_in_bin</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">end_idx</span> <span class="o">&gt;</span> <span class="n">start_idx</span><span class="p">:</span>
+            <span class="n">start_idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">start_idx</span><span class="p">)</span>
+            <span class="n">end_idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">end_idx</span><span class="p">)</span>
+
+            <span class="c1"># Extract coefficients in this bin</span>
+            <span class="n">coeffs_in_bin</span> <span class="o">=</span> <span class="n">input_masked</span><span class="p">[</span><span class="n">sorted_indices</span><span class="p">[</span><span class="n">start_idx</span><span class="p">:</span><span class="n">end_idx</span><span class="p">]]</span>
+
+            <span class="c1"># Compute current L1 norm in this bin</span>
+            <span class="n">current_l1_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">coeffs_in_bin</span><span class="p">))</span>
+            <span class="n">delta_bin_value</span> <span class="o">=</span> <span class="p">(</span><span class="n">target_l1_bin</span> <span class="o">-</span> <span class="n">current_l1_bin</span><span class="p">)</span> <span class="o">/</span> <span class="n">num_coeffs_in_bin</span>
+
+            <span class="c1"># Adjust positive values</span>
+            <span class="n">pos_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">coeffs_in_bin</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pos_indices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">coeffs_in_bin</span><span class="p">[</span><span class="n">pos_indices</span><span class="p">]</span> <span class="o">+=</span> <span class="n">delta_bin_value</span>
+                <span class="n">coeffs_in_bin</span><span class="p">[</span><span class="n">pos_indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">coeffs_in_bin</span><span class="p">[</span><span class="n">pos_indices</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+
+            <span class="c1"># Recalculate L1 norm</span>
+            <span class="n">current_l1_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">coeffs_in_bin</span><span class="p">))</span>
+
+            <span class="c1"># Adjust negative values</span>
+            <span class="n">neg_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">coeffs_in_bin</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neg_indices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">neg_adjustment</span> <span class="o">=</span> <span class="p">(</span><span class="n">target_l1_bin</span> <span class="o">-</span> <span class="n">current_l1_bin</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">neg_indices</span><span class="p">)</span>
+                <span class="n">coeffs_in_bin</span><span class="p">[</span><span class="n">neg_indices</span><span class="p">]</span> <span class="o">-=</span> <span class="n">neg_adjustment</span>
+                <span class="n">coeffs_in_bin</span><span class="p">[</span><span class="n">neg_indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">coeffs_in_bin</span><span class="p">[</span><span class="n">neg_indices</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+
+            <span class="c1"># Enforce final boundary constraints</span>
+            <span class="c1"># index = np.where(coeffs_in_bin &lt; bin_min)[0]</span>
+            <span class="c1"># if len(index) &gt; 0:</span>
+            <span class="c1">#     coeffs_in_bin[index] = bin_min</span>
+            <span class="c1"># index = np.where(coeffs_in_bin &gt; bin_max)[0]</span>
+            <span class="c1"># if len(index) &gt;0:</span>
+            <span class="c1">#     coeffs_in_bin[index] = bin_max</span>
+            <span class="n">coeffs_in_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">coeffs_in_bin</span><span class="p">,</span> <span class="n">bin_min</span><span class="p">,</span> <span class="n">bin_max</span><span class="p">)</span>
+            
+            <span class="c1"># Compute L1 norm error for diagnostics</span>
+            <span class="n">current_l1_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">coeffs_in_bin</span><span class="p">))</span>
+            <span class="n">total_l1_error</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">target_l1_bin</span> <span class="o">-</span> <span class="n">current_l1_bin</span><span class="p">)</span>
+
+            <span class="c1"># Update sorted coefficients</span>
+            <span class="n">input_masked</span><span class="p">[</span><span class="n">sorted_indices</span><span class="p">[</span><span class="n">start_idx</span><span class="p">:</span><span class="n">end_idx</span><span class="p">]]</span> <span class="o">=</span> <span class="n">coeffs_in_bin</span>
+
+        <span class="n">start_idx</span> <span class="o">+=</span> <span class="n">num_coeffs_in_bin</span>
+
+    <span class="c1"># Restore the adjusted coefficients into the original image</span>
+    <span class="n">adjusted_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">input_image</span><span class="p">)</span>
+    <span class="n">adjusted_image</span><span class="p">[</span><span class="n">mask_indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">input_masked</span>  
+
+    <span class="k">return</span> <span class="n">adjusted_image</span><span class="p">,</span> <span class="n">total_l1_error</span> <span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">target_l1_norm</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="process_image">
+<a class="viewcode-back" href="../../golconda.adjustl1.html#golconda.adjustl1.process_image">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_image</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">filter_type</span><span class="p">,</span> <span class="n">nscales</span><span class="p">,</span> <span class="n">nbins</span><span class="p">,</span> <span class="n">decomposer_class</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Process the target map to compute wavelet coefficients, histograms, L1 norms, and power spectrum.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        target (np.ndarray): The input map to analyze.</span>
+<span class="sd">        filter_type (str): The type of filter to use for wavelet decomposition.</span>
+<span class="sd">        nscales (int): The number of scales for decomposition.</span>
+<span class="sd">        nbins (list[int]): Number of bins for the histogram at each scale.</span>
+<span class="sd">        pixelsize (float): Pixel size for power spectrum adjustment.</span>
+<span class="sd">        adjuster_class: A class implementing compute_power_spectrum().</span>
+<span class="sd">        decomposer_class: A class implementing decompose().</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: A dictionary containing wavelet coefficient statistics and power spectrum information.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">target_values</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Compute the power spectrum of the target map</span>
+    <span class="c1"># target_ells, target_cls = adjuster_class.compute_power_spectrum(target)</span>
+
+    <span class="c1"># Decompose the target map into wavelet coefficients</span>
+    <span class="n">target_coefs</span> <span class="o">=</span> <span class="n">decomposer_class</span><span class="o">.</span><span class="n">decompose</span><span class="p">(</span>
+        <span class="n">target</span><span class="p">,</span> <span class="n">num_scales</span><span class="o">=</span><span class="n">nscales</span><span class="p">,</span> <span class="n">filter_type</span><span class="o">=</span><span class="n">filter_type</span><span class="p">,</span> <span class="n">recalculate_params</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Process each scale and compute histograms, L1 norms, etc.</span>
+    <span class="k">for</span> <span class="n">scale</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nscales</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">target_coefs</span><span class="p">[</span><span class="n">scale</span><span class="p">])</span>
+        <span class="n">edges</span><span class="p">,</span> <span class="n">centers</span><span class="p">,</span> <span class="n">hist</span><span class="p">,</span> <span class="n">l1_norm</span> <span class="o">=</span> <span class="n">calculate_histogram_l1norm</span><span class="p">(</span>
+            <span class="n">target_coefs</span><span class="p">[</span><span class="n">scale</span><span class="p">],</span> <span class="kc">None</span><span class="p">,</span> <span class="n">nbins</span><span class="p">[</span><span class="n">scale</span><span class="p">],</span> <span class="n">density</span><span class="o">=</span><span class="n">density</span>
+        <span class="p">)</span>
+        <span class="n">target_values</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;scale_</span><span class="si">{</span><span class="n">scale</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;histogram&#39;</span><span class="p">:</span> <span class="n">hist</span><span class="p">,</span>
+            <span class="s1">&#39;binedges&#39;</span><span class="p">:</span> <span class="n">edges</span><span class="p">,</span>
+            <span class="s1">&#39;l1_norm&#39;</span><span class="p">:</span> <span class="n">l1_norm</span><span class="p">,</span>
+            <span class="s1">&#39;bincenters&#39;</span><span class="p">:</span> <span class="n">centers</span><span class="p">,</span>
+            <span class="s1">&#39;sigma&#39;</span><span class="p">:</span> <span class="n">sigma</span>
+        <span class="p">}</span>
+
+    <span class="c1"># Add power spectrum information</span>
+    <span class="c1"># target_values[&#39;cls&#39;] = target_cls</span>
+    <span class="c1"># target_values[&#39;ells&#39;] = target_ells</span>
+    <span class="n">target_values</span><span class="p">[</span><span class="s1">&#39;coefs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_coefs</span>
+
+    <span class="k">return</span> <span class="n">target_values</span></div>
+
+
+<div class="viewcode-block" id="adjust_pixel_values">
+<a class="viewcode-back" href="../../golconda.adjustl1.html#golconda.adjustl1.adjust_pixel_values">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">adjust_pixel_values</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">targetvalues</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adjusts the pixel values of an image based on target statistics.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image (ndarray): The input image.</span>
+<span class="sd">        mask (ndarray): The mask indicating valid pixels.</span>
+<span class="sd">        targetvalues (dict): The target statistics including &#39;binedges&#39;, &#39;histogram&#39;, and &#39;l1_norm&#39;.</span>
+<span class="sd">        density (bool, optional): Flag indicating whether to use density scaling. Defaults to False.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ndarray: The adjusted image.</span>
+<span class="sd">        float: The total error normalized by the maximum L1 norm target.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Function body...</span>
+    <span class="c1"># Retrieve target statistics</span>
+    <span class="n">binedges_target</span> <span class="o">=</span> <span class="n">targetvalues</span><span class="p">[</span><span class="s1">&#39;binedges&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">density</span><span class="p">:</span>
+        <span class="n">scaling_factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="n">binedges_target</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">binedges_target</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">scaling_factor</span> <span class="o">=</span> <span class="mi">1</span>
+        
+    <span class="n">histogram_target</span> <span class="o">=</span> <span class="n">targetvalues</span><span class="p">[</span><span class="s1">&#39;histogram&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">scaling_factor</span>
+    <span class="n">l1_norm_target</span> <span class="o">=</span> <span class="n">targetvalues</span><span class="p">[</span><span class="s1">&#39;l1_norm&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">scaling_factor</span>
+    
+    <span class="n">nbins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">histogram_target</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="c1"># Extract masked pixel values</span>
+    <span class="n">mask_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>  <span class="c1"># Indices of valid (non-zero mask) pixels</span>
+    <span class="n">masked_pixel_values</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">mask_indices</span><span class="p">]</span>
+    <span class="n">sorted_pixel_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">masked_pixel_values</span><span class="p">)</span>  <span class="c1"># Indices of sorted masked values</span>
+
+    <span class="c1"># Initialize binning</span>
+    <span class="n">total_pixels</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">size</span>  <span class="c1"># Total number of pixels in the image</span>
+    <span class="n">total_masked_pixels</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">masked_pixel_values</span><span class="p">)</span>  <span class="c1"># Total number of valid (masked) pixels</span>
+    <span class="n">pixel_fraction</span> <span class="o">=</span> <span class="n">total_masked_pixels</span> <span class="o">/</span> <span class="n">total_pixels</span>  <span class="c1"># Fraction of valid pixels</span>
+    <span class="n">start_index</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Start index for the current bin</span>
+    <span class="n">total_error</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Track total error</span>
+
+    <span class="c1"># Iterate over bins</span>
+    <span class="k">for</span> <span class="n">bin_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbins</span><span class="p">):</span>
+        <span class="c1"># Compute expected number of pixels in the current bin</span>
+        <span class="n">expected_pixels_in_bin</span> <span class="o">=</span> <span class="n">histogram_target</span><span class="p">[</span><span class="n">bin_index</span><span class="p">]</span> <span class="o">*</span> <span class="n">pixel_fraction</span>
+        <span class="n">end_index</span> <span class="o">=</span> <span class="n">start_index</span> <span class="o">+</span> <span class="n">expected_pixels_in_bin</span>
+
+        <span class="c1"># Handle edge cases for the last bin and invalid end_index</span>
+        <span class="k">if</span> <span class="n">bin_index</span> <span class="o">==</span> <span class="n">nbins</span> <span class="o">-</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">end_index</span> <span class="o">&gt;</span> <span class="n">total_masked_pixels</span><span class="p">:</span>
+            <span class="n">end_index</span> <span class="o">=</span> <span class="n">total_masked_pixels</span>
+
+        <span class="n">target_l1_norm</span> <span class="o">=</span> <span class="n">l1_norm_target</span><span class="p">[</span><span class="n">bin_index</span><span class="p">]</span> <span class="o">*</span> <span class="n">pixel_fraction</span>
+
+        <span class="c1"># Process pixels in the bin if there are any</span>
+        <span class="k">if</span> <span class="n">expected_pixels_in_bin</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">end_index</span> <span class="o">&gt;</span> <span class="n">start_index</span><span class="p">:</span>
+            <span class="n">start_index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">start_index</span><span class="p">)</span>
+            <span class="n">end_index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">end_index</span><span class="p">)</span>
+
+            <span class="c1"># Extract pixel values in this bin</span>
+            <span class="n">bin_pixel_values</span> <span class="o">=</span> <span class="n">masked_pixel_values</span><span class="p">[</span><span class="n">sorted_pixel_indices</span><span class="p">[</span><span class="n">start_index</span><span class="p">:</span><span class="n">end_index</span><span class="p">]]</span>
+
+            <span class="c1"># Apply L1 norm adjustment</span>
+            <span class="n">current_l1_norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">bin_pixel_values</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">current_l1_norm</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># Separate positive and negative coefficients</span>
+                <span class="n">positive_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">bin_pixel_values</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">negative_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">bin_pixel_values</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+                <span class="c1"># Proportional scaling for positive and negative coefficients</span>
+                <span class="n">positive_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">bin_pixel_values</span><span class="p">[</span><span class="n">positive_indices</span><span class="p">])</span>
+                <span class="n">negative_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">bin_pixel_values</span><span class="p">[</span><span class="n">negative_indices</span><span class="p">]))</span>
+                <span class="n">total_sum</span> <span class="o">=</span> <span class="n">positive_sum</span> <span class="o">+</span> <span class="n">negative_sum</span>
+
+                <span class="k">if</span> <span class="n">positive_sum</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">scaling_factor_positive</span> <span class="o">=</span> <span class="n">target_l1_norm</span> <span class="o">*</span> <span class="p">(</span><span class="n">positive_sum</span> <span class="o">/</span> <span class="n">total_sum</span><span class="p">)</span> <span class="o">/</span> <span class="n">positive_sum</span>
+                    <span class="n">bin_pixel_values</span><span class="p">[</span><span class="n">positive_indices</span><span class="p">]</span> <span class="o">*=</span> <span class="n">scaling_factor_positive</span>
+
+                <span class="n">positive_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">bin_pixel_values</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">negative_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">bin_pixel_values</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">positive_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">bin_pixel_values</span><span class="p">[</span><span class="n">positive_indices</span><span class="p">])</span>
+                <span class="n">negative_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">bin_pixel_values</span><span class="p">[</span><span class="n">negative_indices</span><span class="p">]))</span>
+                
+                <span class="k">if</span> <span class="n">negative_sum</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">scaling_factor_negative</span> <span class="o">=</span> <span class="n">target_l1_norm</span> <span class="o">*</span> <span class="p">(</span><span class="n">negative_sum</span> <span class="o">/</span> <span class="n">total_sum</span><span class="p">)</span> <span class="o">/</span> <span class="n">negative_sum</span>
+                    <span class="n">bin_pixel_values</span><span class="p">[</span><span class="n">negative_indices</span><span class="p">]</span> <span class="o">*=</span> <span class="n">scaling_factor_negative</span>
+
+            <span class="c1"># Apply boundary constraints</span>
+            <span class="n">bin_pixel_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">bin_pixel_values</span><span class="p">,</span> <span class="n">binedges_target</span><span class="p">[</span><span class="n">bin_index</span><span class="p">],</span> <span class="n">binedges_target</span><span class="p">[</span><span class="n">bin_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+
+            <span class="c1"># Calculate error for this bin</span>
+            <span class="n">adjusted_l1_norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">bin_pixel_values</span><span class="p">))</span>
+            <span class="n">bin_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">target_l1_norm</span> <span class="o">-</span> <span class="n">adjusted_l1_norm</span><span class="p">)</span> 
+            <span class="n">total_error</span> <span class="o">+=</span> <span class="n">bin_error</span>
+
+            <span class="c1"># Update the masked pixel values</span>
+            <span class="n">masked_pixel_values</span><span class="p">[</span><span class="n">sorted_pixel_indices</span><span class="p">[</span><span class="n">start_index</span><span class="p">:</span><span class="n">end_index</span><span class="p">]]</span> <span class="o">=</span> <span class="n">bin_pixel_values</span>
+
+        <span class="c1"># Update the start index for the next bin</span>
+        <span class="n">start_index</span> <span class="o">+=</span> <span class="n">expected_pixels_in_bin</span>
+
+    <span class="c1"># Write back the adjusted pixel values to the original image</span>
+    <span class="n">image</span><span class="p">[</span><span class="n">mask_indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">masked_pixel_values</span>
+    <span class="k">return</span> <span class="n">image</span><span class="p">,</span> <span class="n">total_error</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">l1_norm_target</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Vilasini Tinnaneri Sreekanth.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

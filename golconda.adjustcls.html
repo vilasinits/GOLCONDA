@@ -1,0 +1,413 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>golconda.adjustcls module &mdash; GOLCONDA 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="golconda.adjustl1 module" href="golconda.adjustl1.html" />
+    <link rel="prev" title="golconda package" href="golconda.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            GOLCONDA
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="golconda.html">golconda package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="golconda.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">golconda.adjustcls module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#golconda.adjustcls.PowerSpectrum"><code class="docutils literal notranslate"><span class="pre">PowerSpectrum</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#golconda.adjustcls.PowerSpectrumAdjuster"><code class="docutils literal notranslate"><span class="pre">PowerSpectrumAdjuster</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#golconda.adjustcls.calculate_Cls_"><code class="docutils literal notranslate"><span class="pre">calculate_Cls_()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#golconda.adjustcls.fourier_coordinate"><code class="docutils literal notranslate"><span class="pre">fourier_coordinate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#golconda.adjustcls.generate_field_with_target_cls_"><code class="docutils literal notranslate"><span class="pre">generate_field_with_target_cls_()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="golconda.adjustl1.html">golconda.adjustl1 module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="golconda.decomposer.html">golconda.decomposer module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="golconda.image.html">golconda.image module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="golconda.loadsimulation.html">golconda.loadsimulation module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="golconda.moments.html">golconda.moments module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">GOLCONDA</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="golconda.html">golconda package</a></li>
+      <li class="breadcrumb-item active">golconda.adjustcls module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/golconda.adjustcls.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-golconda.adjustcls">
+<span id="golconda-adjustcls-module"></span><h1>golconda.adjustcls module<a class="headerlink" href="#module-golconda.adjustcls" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">golconda.adjustcls.</span></span><span class="sig-name descname"><span class="pre">PowerSpectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixelsize</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustcls.html#PowerSpectrum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class for calculating power spectrum and generating fields with target power spectrum.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>map</strong> (<em>ndarray</em>) – Input map.</p></li>
+<li><p><strong>pixelsize</strong> (<em>float</em>) – Size of each pixel in degrees.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum.pixelsize">
+<span class="sig-name descname"><span class="pre">pixelsize</span></span><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum.pixelsize" title="Link to this definition"></a></dt>
+<dd><p>Size of each pixel in degrees.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum.map_size">
+<span class="sig-name descname"><span class="pre">map_size</span></span><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum.map_size" title="Link to this definition"></a></dt>
+<dd><p>Size of the input map.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum.ell_min">
+<span class="sig-name descname"><span class="pre">ell_min</span></span><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum.ell_min" title="Link to this definition"></a></dt>
+<dd><p>Minimum value of ell.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum.ell_max">
+<span class="sig-name descname"><span class="pre">ell_max</span></span><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum.ell_max" title="Link to this definition"></a></dt>
+<dd><p>Maximum value of ell.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum.deltaell">
+<span class="sig-name descname"><span class="pre">deltaell</span></span><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum.deltaell" title="Link to this definition"></a></dt>
+<dd><p>Interval between ell values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum.nbinsell">
+<span class="sig-name descname"><span class="pre">nbinsell</span></span><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum.nbinsell" title="Link to this definition"></a></dt>
+<dd><p>Number of ell bins.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum.pixel_size_rad_perpixel">
+<span class="sig-name descname"><span class="pre">pixel_size_rad_perpixel</span></span><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum.pixel_size_rad_perpixel" title="Link to this definition"></a></dt>
+<dd><p>Pixel size in radians per pixel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum.lpix">
+<span class="sig-name descname"><span class="pre">lpix</span></span><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum.lpix" title="Link to this definition"></a></dt>
+<dd><p>Value of lpix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum.lx">
+<span class="sig-name descname"><span class="pre">lx</span></span><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum.lx" title="Link to this definition"></a></dt>
+<dd><p>Array of lx values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum.ly">
+<span class="sig-name descname"><span class="pre">ly</span></span><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum.ly" title="Link to this definition"></a></dt>
+<dd><p>Array of ly values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum.l">
+<span class="sig-name descname"><span class="pre">l</span></span><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum.l" title="Link to this definition"></a></dt>
+<dd><p>Array of l values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum.ell_edges">
+<span class="sig-name descname"><span class="pre">ell_edges</span></span><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum.ell_edges" title="Link to this definition"></a></dt>
+<dd><p>Array of ell bin edges.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum.calculate_Cls">
+<span class="sig-name descname"><span class="pre">calculate_Cls</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustcls.html#PowerSpectrum.calculate_Cls"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum.calculate_Cls" title="Link to this definition"></a></dt>
+<dd><p>Calculates the power spectrum (Cls) of the input map.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrum.generate_field_with_target_cls">
+<span class="sig-name descname"><span class="pre">generate_field_with_target_cls</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_cls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_ells</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustcls.html#PowerSpectrum.generate_field_with_target_cls"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#golconda.adjustcls.PowerSpectrum.generate_field_with_target_cls" title="Link to this definition"></a></dt>
+<dd><p>Generates a field with the target power spectrum.</p>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#id0" title="golconda.adjustcls.PowerSpectrum.calculate_Cls"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_Cls</span></code></a>(map)</p></td>
+<td><p>Calculates the power spectrum (Cls) of the input map.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#id1" title="golconda.adjustcls.PowerSpectrum.generate_field_with_target_cls"><code class="xref py py-obj docutils literal notranslate"><span class="pre">generate_field_with_target_cls</span></code></a>(input_field, ...)</p></td>
+<td><p>Generates a field with the target power spectrum.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">calculate_Cls</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustcls.html#PowerSpectrum.calculate_Cls"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd><p>Calculates the power spectrum (Cls) of the input map.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>map</strong> (<em>ndarray</em>) – Input map.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple containing the ell edges, ell bins, and Cls values.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">generate_field_with_target_cls</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_cls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_ells</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustcls.html#PowerSpectrum.generate_field_with_target_cls"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd><p>Generates a field with the target power spectrum.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_field</strong> (<em>ndarray</em>) – Input field.</p></li>
+<li><p><strong>target_cls</strong> (<em>ndarray</em>) – Target power spectrum values.</p></li>
+<li><p><strong>target_ells</strong> (<em>ndarray</em>) – Corresponding ell values for the target power spectrum.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Generated field with the target power spectrum.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>AssertionError</strong> – If the lengths of target_cls and target_ells are not equal.</p></li>
+<li><p><strong>AssertionError</strong> – If any value in target_cls is negative.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrumAdjuster">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">golconda.adjustcls.</span></span><span class="sig-name descname"><span class="pre">PowerSpectrumAdjuster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_size</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustcls.html#PowerSpectrumAdjuster"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#golconda.adjustcls.PowerSpectrumAdjuster" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#golconda.adjustcls.PowerSpectrumAdjuster.adjust_map_cls" title="golconda.adjustcls.PowerSpectrumAdjuster.adjust_map_cls"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adjust_map_cls</span></code></a>(input_map, target_cls, ...)</p></td>
+<td><p>Adjust the input map to match the target power spectrum.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#golconda.adjustcls.PowerSpectrumAdjuster.compute_power_spectrum" title="golconda.adjustcls.PowerSpectrumAdjuster.compute_power_spectrum"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_power_spectrum</span></code></a>(image)</p></td>
+<td><p>Compute the 1D power spectrum from a given 2D image.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrumAdjuster.adjust_map_cls">
+<span class="sig-name descname"><span class="pre">adjust_map_cls</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_cls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_ells</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustcls.html#PowerSpectrumAdjuster.adjust_map_cls"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#golconda.adjustcls.PowerSpectrumAdjuster.adjust_map_cls" title="Link to this definition"></a></dt>
+<dd><p>Adjust the input map to match the target power spectrum.</p>
+<p>Parameters:
+- input_map: 2D numpy array, the input map.
+- target_cls: 1D numpy array, the target power spectrum values.
+- target_ells: 1D numpy array, the target multipole moments.</p>
+<p>Returns:
+- adjusted_map: 2D numpy array, the adjusted map.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="golconda.adjustcls.PowerSpectrumAdjuster.compute_power_spectrum">
+<span class="sig-name descname"><span class="pre">compute_power_spectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustcls.html#PowerSpectrumAdjuster.compute_power_spectrum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#golconda.adjustcls.PowerSpectrumAdjuster.compute_power_spectrum" title="Link to this definition"></a></dt>
+<dd><p>Compute the 1D power spectrum from a given 2D image.</p>
+<p>Parameters:
+- image: 2D numpy array, the input image.</p>
+<p>Returns:
+- ell: 1D numpy array, the multipole moments.
+- power_spectrum_1d: 1D numpy array, the power spectrum values in [rad^2].</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="golconda.adjustcls.calculate_Cls_">
+<span class="sig-prename descclassname"><span class="pre">golconda.adjustcls.</span></span><span class="sig-name descname"><span class="pre">calculate_Cls_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ell_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ell_max</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustcls.html#calculate_Cls_"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#golconda.adjustcls.calculate_Cls_" title="Link to this definition"></a></dt>
+<dd><p>map: the image from which the angular power spectra (Cls) has to be calculated
+angle: side angle in the units of degree
+ell_min: the minimum multipole moment to get the Cls
+ell_max: the maximum multipole moment to get the Cls
+n_bins: number of bins in the ells</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="golconda.adjustcls.fourier_coordinate">
+<span class="sig-prename descclassname"><span class="pre">golconda.adjustcls.</span></span><span class="sig-name descname"><span class="pre">fourier_coordinate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">map_size</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustcls.html#fourier_coordinate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#golconda.adjustcls.fourier_coordinate" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="golconda.adjustcls.generate_field_with_target_cls_">
+<span class="sig-prename descclassname"><span class="pre">golconda.adjustcls.</span></span><span class="sig-name descname"><span class="pre">generate_field_with_target_cls_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_cls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_ells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ell_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustcls.html#generate_field_with_target_cls_"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#golconda.adjustcls.generate_field_with_target_cls_" title="Link to this definition"></a></dt>
+<dd><p>Adjusts the power spectrum of an input field to match a target power spectrum.</p>
+<p>Parameters:
+- input_field (jax.numpy.ndarray): The input field as a 2D JAX array.
+- angle (float): The field of view in degrees.
+- target_cls (jax.numpy.ndarray): Target power spectrum values.
+- target_ells (jax.numpy.ndarray): Target multipole moments associated with target_cls.
+- ell_max (int): Maximum multipole moment to consider.
+- n_bins (int): Number of bins to use for the power spectrum calculation.</p>
+<p>Returns:
+- jax.numpy.ndarray: The adjusted input field, transformed to match the target power spectrum.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="golconda.html" class="btn btn-neutral float-left" title="golconda package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="golconda.adjustl1.html" class="btn btn-neutral float-right" title="golconda.adjustl1 module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Vilasini Tinnaneri Sreekanth.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

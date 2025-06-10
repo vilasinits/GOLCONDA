@@ -1,0 +1,500 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>golconda.adjustcls &mdash; GOLCONDA 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            GOLCONDA
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../golconda.html">golconda package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">GOLCONDA</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">golconda.adjustcls</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for golconda.adjustcls</h1><div class="highlight"><pre>
+<span></span><span class="c1"># from utils.config import *</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pyfftw</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jax.numpy.fft</span><span class="w"> </span><span class="kn">import</span> <span class="n">rfft2</span><span class="p">,</span> <span class="n">irfft2</span><span class="p">,</span> <span class="n">rfftfreq</span><span class="p">,</span> <span class="n">fftfreq</span><span class="p">,</span> <span class="n">ifft2</span><span class="p">,</span> <span class="n">fftn</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.interpolate</span><span class="w"> </span><span class="kn">import</span> <span class="n">interp1d</span>
+<div class="viewcode-block" id="PowerSpectrumAdjuster">
+<a class="viewcode-back" href="../../golconda.adjustcls.html#golconda.adjustcls.PowerSpectrumAdjuster">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PowerSpectrumAdjuster</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_shape</span><span class="p">,</span> <span class="n">pixel_size</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the precomputed values for power spectrum adjustment.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        - map_shape: tuple, the shape of the input map (assumes square maps).</span>
+<span class="sd">        - pixel_size: float, the pixel size in arcmin/pixel.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">map_shape</span> <span class="o">=</span> <span class="n">map_shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixel_size</span> <span class="o">=</span> <span class="n">pixel_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pix_to_rad</span> <span class="o">=</span> <span class="n">pixel_size</span> <span class="o">/</span> <span class="mf">60.</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.</span>  <span class="c1"># Convert to radians/pixel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="n">map_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># Assume square maps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">/</span> <span class="mi">2</span>
+
+        <span class="c1"># Enable pyFFTW plan cache for efficiency</span>
+        <span class="n">pyfftw</span><span class="o">.</span><span class="n">interfaces</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">enable</span><span class="p">()</span>
+
+        <span class="c1"># Precompute 2D ell grid and radial bins</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_precompute_grids</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_precompute_grids</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Precompute the 2D ell grid and radial bins.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">inds</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftfreq</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="mf">1.</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+        <span class="n">X</span><span class="p">,</span> <span class="n">Y</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">inds</span><span class="p">,</span> <span class="n">inds</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">X</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">Y</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ell2d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">pix_to_rad</span><span class="p">)</span> <span class="o">/</span> <span class="mf">360.</span>
+
+        <span class="c1"># Precompute radial bin indices (k)</span>
+        <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">map_shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">radial_bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">center</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">center</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="PowerSpectrumAdjuster.compute_power_spectrum">
+<a class="viewcode-back" href="../../golconda.adjustcls.html#golconda.adjustcls.PowerSpectrumAdjuster.compute_power_spectrum">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_power_spectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the 1D power spectrum from a given 2D image.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        - image: 2D numpy array, the input image.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        - ell: 1D numpy array, the multipole moments.</span>
+<span class="sd">        - power_spectrum_1d: 1D numpy array, the power spectrum values in [rad^2].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># FFT using pyFFTW</span>
+        <span class="n">fft_object</span> <span class="o">=</span> <span class="n">pyfftw</span><span class="o">.</span><span class="n">builders</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">threads</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+        <span class="n">fft_map</span> <span class="o">=</span> <span class="n">fft_object</span><span class="p">()</span>
+        
+        <span class="c1"># Normalize the FFT by N^2</span>
+        <span class="n">fft_map_normalized</span> <span class="o">=</span> <span class="n">fft_map</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        
+        <span class="c1"># Shift the zero frequency to the center</span>
+        <span class="n">data_ft_shifted</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">fft_map_normalized</span><span class="p">))</span>
+        
+        <span class="c1"># Compute the 2D power spectrum</span>
+        <span class="n">power_spectrum_2d</span> <span class="o">=</span> <span class="p">(</span><span class="n">data_ft_shifted</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Radial profile using precomputed bins</span>
+        <span class="n">tbin</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">radial_bins</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">power_spectrum_2d</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+        <span class="n">nr</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">radial_bins</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+        <span class="n">radial_profile</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">nr</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">tbin</span> <span class="o">/</span> <span class="n">nr</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Nyquist limit</span>
+        <span class="n">nyquist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">powerspectrum</span> <span class="o">=</span> <span class="n">radial_profile</span><span class="p">[:</span><span class="n">nyquist</span><span class="p">]</span>
+
+        <span class="c1"># 1D Power spectrum in [rad^2]</span>
+        <span class="n">power_spectrum_1d</span> <span class="o">=</span> <span class="n">powerspectrum</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pix_to_rad</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Multipole moments (ell)</span>
+        <span class="n">ks</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">power_spectrum_1d</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="c1"># ell = 2. * np.pi * ks / (self.pix_to_rad * self.N)</span>
+        <span class="n">ell</span> <span class="o">=</span> <span class="mf">4.</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">ks</span> 
+        <span class="k">return</span> <span class="n">ell</span><span class="p">,</span> <span class="n">power_spectrum_1d</span></div>
+
+
+    
+<div class="viewcode-block" id="PowerSpectrumAdjuster.adjust_map_cls">
+<a class="viewcode-back" href="../../golconda.adjustcls.html#golconda.adjustcls.PowerSpectrumAdjuster.adjust_map_cls">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">adjust_map_cls</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_map</span><span class="p">,</span> <span class="n">target_cls</span><span class="p">,</span> <span class="n">target_ells</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adjust the input map to match the target power spectrum.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        - input_map: 2D numpy array, the input map.</span>
+<span class="sd">        - target_cls: 1D numpy array, the target power spectrum values.</span>
+<span class="sd">        - target_ells: 1D numpy array, the target multipole moments.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        - adjusted_map: 2D numpy array, the adjusted map.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Ensure the input map has zero mean</span>
+        <span class="c1"># input_map = input_map - np.mean(input_map)</span>
+
+        <span class="c1"># Compute the 2D Fourier grid (if not precomputed)</span>
+        <span class="c1"># if not hasattr(self, &#39;ell2d&#39;):</span>
+        <span class="n">ell_x</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftfreq</span><span class="p">(</span><span class="n">input_map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pix_to_rad</span><span class="p">)</span>
+        <span class="n">ell_y</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftfreq</span><span class="p">(</span><span class="n">input_map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pix_to_rad</span><span class="p">)</span>
+        <span class="n">ell_x</span><span class="p">,</span> <span class="n">ell_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">ell_x</span><span class="p">,</span> <span class="n">ell_y</span><span class="p">)</span>
+        <span class="n">ell2d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">ell_x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">ell_y</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Interpolate target Cl spectrum onto 2D grid</span>
+        <span class="n">cl_interp</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">target_ells</span><span class="p">,</span> <span class="n">target_cls</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">target_cls</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">CLTarget2d</span> <span class="o">=</span> <span class="n">cl_interp</span><span class="p">(</span><span class="n">ell2d</span><span class="p">)</span>
+
+        <span class="c1"># Compute input map&#39;s Cl and interpolate</span>
+        <span class="n">ell_input</span><span class="p">,</span> <span class="n">power_spectrum_1d_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_power_spectrum</span><span class="p">(</span><span class="n">input_map</span><span class="p">)</span>
+        <span class="n">cl_interp_input</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">ell_input</span><span class="p">,</span> <span class="n">power_spectrum_1d_input</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">power_spectrum_1d_input</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">CLInput2d</span> <span class="o">=</span> <span class="n">cl_interp_input</span><span class="p">(</span><span class="n">ell2d</span><span class="p">)</span>
+
+        <span class="c1"># Compute scaling factors</span>
+        <span class="n">epsilon</span> <span class="o">=</span> <span class="mf">1e-25</span>
+        <span class="n">scaling_log</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">CLTarget2d</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">CLInput2d</span> <span class="o">+</span> <span class="n">epsilon</span><span class="p">))</span>
+        <span class="n">scaling</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">scaling_log</span><span class="p">)</span>
+
+        <span class="c1"># FFT the input map using pyFFTW</span>
+        <span class="n">fft_object</span> <span class="o">=</span> <span class="n">pyfftw</span><span class="o">.</span><span class="n">builders</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">input_map</span><span class="p">,</span> <span class="n">threads</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+        <span class="n">fft_map</span> <span class="o">=</span> <span class="n">fft_object</span><span class="p">()</span>
+        <span class="n">current_amplitudes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">fft_map</span><span class="p">)</span>
+        <span class="n">phases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">fft_map</span><span class="p">)</span>
+
+        <span class="c1"># Scale Fourier amplitudes to match the target Cl</span>
+        <span class="n">adjusted_amplitudes</span> <span class="o">=</span> <span class="n">current_amplitudes</span> <span class="o">*</span> <span class="n">scaling</span>
+        <span class="n">adjusted_fft_map</span> <span class="o">=</span> <span class="n">adjusted_amplitudes</span>  <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">phases</span><span class="p">)</span>
+
+        <span class="c1"># IFFT to get the adjusted map</span>
+        <span class="n">ifft_object</span> <span class="o">=</span> <span class="n">pyfftw</span><span class="o">.</span><span class="n">builders</span><span class="o">.</span><span class="n">ifft2</span><span class="p">(</span><span class="n">adjusted_fft_map</span><span class="p">,</span> <span class="n">threads</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+        <span class="n">adjusted_map</span> <span class="o">=</span> <span class="n">ifft_object</span><span class="p">()</span><span class="o">.</span><span class="n">real</span>
+
+        <span class="k">return</span> <span class="n">adjusted_map</span></div>
+</div>
+
+
+<div class="viewcode-block" id="PowerSpectrum">
+<a class="viewcode-back" href="../../golconda.adjustcls.html#golconda.adjustcls.PowerSpectrum">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PowerSpectrum</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class for calculating power spectrum and generating fields with target power spectrum.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        map (ndarray): Input map.</span>
+<span class="sd">        pixelsize (float): Size of each pixel in degrees.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        pixelsize (float): Size of each pixel in degrees.</span>
+<span class="sd">        map_size (int): Size of the input map.</span>
+<span class="sd">        ell_min (float): Minimum value of ell.</span>
+<span class="sd">        ell_max (float): Maximum value of ell.</span>
+<span class="sd">        deltaell (int): Interval between ell values.</span>
+<span class="sd">        nbinsell (int): Number of ell bins.</span>
+<span class="sd">        pixel_size_rad_perpixel (float): Pixel size in radians per pixel.</span>
+<span class="sd">        lpix (float): Value of lpix.</span>
+<span class="sd">        lx (ndarray): Array of lx values.</span>
+<span class="sd">        ly (ndarray): Array of ly values.</span>
+<span class="sd">        l (ndarray): Array of l values.</span>
+<span class="sd">        ell_edges (ndarray): Array of ell bin edges.</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">        calculate_Cls(map): Calculates the power spectrum (Cls) of the input map.</span>
+<span class="sd">        generate_field_with_target_cls(input_field, target_cls, target_ells): Generates a field with the target power spectrum.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">map</span><span class="p">,</span> <span class="n">pixelsize</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixelsize</span> <span class="o">=</span> <span class="n">pixelsize</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">map_size</span> <span class="o">=</span> <span class="nb">map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ell_min</span> <span class="o">=</span> <span class="mf">180.</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">map_size</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pixelsize</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ell_max</span> <span class="o">=</span> <span class="mi">90</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pixelsize</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deltaell</span> <span class="o">=</span> <span class="mi">200</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nbinsell</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">ell_max</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ell_min</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">deltaell</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixel_size_rad_perpixel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixelsize</span> <span class="o">/</span> <span class="p">(</span><span class="mf">180.</span> <span class="o">*</span> <span class="mf">60.</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lpix</span> <span class="o">=</span> <span class="mf">2.</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_size_rad_perpixel</span> <span class="o">/</span> <span class="mf">360.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lx</span> <span class="o">=</span> <span class="n">rfftfreq</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">map_size</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_size</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">lpix</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ly</span> <span class="o">=</span> <span class="n">fftfreq</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">map_size</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_size</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">lpix</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lx</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ly</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ell_edges</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ell_min</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ell_max</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nbinsell</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+<div class="viewcode-block" id="PowerSpectrum.calculate_Cls">
+<a class="viewcode-back" href="../../golconda.adjustcls.html#golconda.adjustcls.PowerSpectrum.calculate_Cls">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_Cls</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">map</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculates the power spectrum (Cls) of the input map.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            map (ndarray): Input map.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: A tuple containing the ell edges, ell bins, and Cls values.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">map_ft</span> <span class="o">=</span> <span class="n">rfft2</span><span class="p">(</span><span class="nb">map</span><span class="p">)</span>
+        <span class="n">power_spectrum</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">map_ft</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+
+        <span class="c1"># Digitize frequencies into bins</span>
+        <span class="n">bin_idx</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">l</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">ell_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">valid_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">bin_idx</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">bin_idx</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbinsell</span><span class="p">)</span>
+
+        <span class="c1"># Aggregate power and counts per bin</span>
+        <span class="n">power_l</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbinsell</span><span class="p">)</span>
+        <span class="n">hits</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbinsell</span><span class="p">)</span>
+        <span class="n">power_l</span> <span class="o">=</span> <span class="n">power_l</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">bin_idx</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">power_spectrum</span><span class="o">.</span><span class="n">ravel</span><span class="p">()[</span><span class="n">valid_mask</span><span class="p">])</span>
+        <span class="n">hits</span> <span class="o">=</span> <span class="n">hits</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">bin_idx</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Compute Cls</span>
+        <span class="n">cls_values</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">hits</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">power_l</span> <span class="o">/</span> <span class="n">hits</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">ell_bins</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ell_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ell_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">normalization</span> <span class="o">=</span> <span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pixelsize</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_size</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_size</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ell_edges</span><span class="p">,</span> <span class="n">ell_bins</span><span class="p">,</span> <span class="n">cls_values</span> <span class="o">*</span> <span class="n">normalization</span></div>
+
+
+<div class="viewcode-block" id="PowerSpectrum.generate_field_with_target_cls">
+<a class="viewcode-back" href="../../golconda.adjustcls.html#golconda.adjustcls.PowerSpectrum.generate_field_with_target_cls">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_field_with_target_cls</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_field</span><span class="p">,</span> <span class="n">target_cls</span><span class="p">,</span> <span class="n">target_ells</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates a field with the target power spectrum.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            input_field (ndarray): Input field.</span>
+<span class="sd">            target_cls (ndarray): Target power spectrum values.</span>
+<span class="sd">            target_ells (ndarray): Corresponding ell values for the target power spectrum.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ndarray: Generated field with the target power spectrum.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            AssertionError: If the lengths of target_cls and target_ells are not equal.</span>
+<span class="sd">            AssertionError: If any value in target_cls is negative.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">target_cls</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">target_ells</span><span class="p">),</span> <span class="s2">&quot;target_cls and target_ells must have the same length&quot;</span>
+        <span class="k">assert</span> <span class="n">jnp</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">target_cls</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">),</span> <span class="s2">&quot;All target_cls values must be non-negative&quot;</span>
+
+        <span class="n">field_ft</span> <span class="o">=</span> <span class="n">rfft2</span><span class="p">(</span><span class="n">input_field</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">ell_bins</span><span class="p">,</span> <span class="n">field_cls</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_Cls</span><span class="p">(</span><span class="n">input_field</span><span class="p">)</span>
+
+        <span class="c1"># Interpolate Cls</span>
+        <span class="n">field_cls_interp</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">ell_bins</span><span class="p">,</span> <span class="n">field_cls</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">field_cls</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">target_cls_interp</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">target_ells</span><span class="p">,</span> <span class="n">target_cls</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">target_cls</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="n">Cl_field</span> <span class="o">=</span> <span class="n">field_cls_interp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">l</span><span class="p">)</span>
+        <span class="n">Cl_target</span> <span class="o">=</span> <span class="n">target_cls_interp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">l</span><span class="p">)</span>
+
+        <span class="c1"># Adjust the amplitude</span>
+        <span class="n">adjustment_factor</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Cl_target</span> <span class="o">/</span> <span class="p">(</span><span class="n">Cl_field</span> <span class="o">+</span> <span class="mf">1e-20</span><span class="p">))</span>
+        <span class="n">adjusted_amplitude</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">field_ft</span><span class="p">)</span> <span class="o">*</span> <span class="n">adjustment_factor</span>
+
+        <span class="c1"># Preserve phase and inverse transform</span>
+        <span class="n">adjusted_field_ft</span> <span class="o">=</span> <span class="n">adjusted_amplitude</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">field_ft</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">irfft2</span><span class="p">(</span><span class="n">adjusted_field_ft</span><span class="p">)</span><span class="o">.</span><span class="n">real</span></div>
+</div>
+
+    
+<span class="c1"># if __name__ == &quot;__main__&quot;:</span>
+<span class="c1">#     # Generate a random input map</span>
+<span class="c1">#     input_map = np.random.rand(256, 256)</span>
+<span class="c1">#     pixelsize = 0.5  # Example pixel size in degrees</span>
+
+<span class="c1">#     # Instantiate the PowerSpectrum class</span>
+<span class="c1">#     power_spectrum_calculator = PowerSpectrum(input_map, pixelsize)</span>
+
+<span class="c1">#     # Compute the power spectrum</span>
+<span class="c1">#     ell_edges, ell_bins, cls_values = power_spectrum_calculator.calculate_Cls(input_map)</span>
+<span class="c1">#     print(&quot;Power spectrum calculated:&quot;, cls_values)</span>
+
+<span class="c1">#     # Generate a field with a target power spectrum</span>
+<span class="c1">#     target_ells = np.linspace(ell_edges.min(), ell_edges.max(), len(cls_values))</span>
+<span class="c1">#     target_cls = cls_values * 1.2  # Example modification of Cls values</span>
+<span class="c1">#     generated_field = power_spectrum_calculator.generate_field_with_target_cls(input_map, target_cls, target_ells)</span>
+<span class="c1">#     print(&quot;Generated field with target power spectrum.&quot;)</span>
+
+
+<div class="viewcode-block" id="fourier_coordinate">
+<a class="viewcode-back" href="../../golconda.adjustcls.html#golconda.adjustcls.fourier_coordinate">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fourier_coordinate</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">map_size</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">map_size</span> <span class="o">//</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span></div>
+
+
+<div class="viewcode-block" id="calculate_Cls_">
+<a class="viewcode-back" href="../../golconda.adjustcls.html#golconda.adjustcls.calculate_Cls_">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_Cls_</span><span class="p">(</span><span class="nb">map</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">ell_min</span><span class="p">,</span> <span class="n">ell_max</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    map: the image from which the angular power spectra (Cls) has to be calculated</span>
+<span class="sd">    angle: side angle in the units of degree</span>
+<span class="sd">    ell_min: the minimum multipole moment to get the Cls</span>
+<span class="sd">    ell_max: the maximum multipole moment to get the Cls</span>
+<span class="sd">    n_bins: number of bins in the ells</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ell_min</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ell_min</span><span class="p">)</span>
+    <span class="n">ell_max</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ell_max</span><span class="p">)</span>
+    <span class="c1"># n_bins = jnp.array(n_bins, int)</span>
+
+    <span class="c1"># Calculate the Fourier Transforms</span>
+    <span class="n">map_ft</span> <span class="o">=</span> <span class="n">rfft2</span><span class="p">(</span><span class="nb">map</span><span class="p">)</span> <span class="c1">## rfft2</span>
+    <span class="n">map_ft</span> <span class="o">=</span> <span class="n">map_ft</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+    <span class="n">ell_edges</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">ell_min</span><span class="p">,</span> <span class="n">ell_max</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="n">n_bins</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Define pixel physical size in Fourier space</span>
+    <span class="n">pixel_size</span> <span class="o">=</span> <span class="n">angle</span><span class="o">*</span><span class="mi">60</span> <span class="o">/</span> <span class="nb">map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">pixel_size_rad_perpixel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">pixel_size</span> <span class="o">/</span> <span class="mf">180.</span> <span class="o">/</span> <span class="mf">60.</span>
+    <span class="n">lpix</span> <span class="o">=</span> <span class="mf">2.</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="n">pixel_size_rad_perpixel</span> <span class="o">/</span> <span class="mf">360.</span> 
+    <span class="c1"># Initialize arrays to store power and hits for each ell bin</span>
+    <span class="n">power_l</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_bins</span><span class="p">)</span>
+    <span class="n">hits</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_bins</span><span class="p">)</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">loop_body</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="n">i</span><span class="p">,</span> <span class="n">power_l</span><span class="p">,</span> <span class="n">hits</span> <span class="o">=</span> <span class="n">val</span>
+        <span class="n">lx</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="nb">map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">lpix</span>
+        <span class="n">ly</span> <span class="o">=</span> <span class="n">j</span> <span class="o">*</span> <span class="n">lpix</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">lx</span><span class="o">**</span><span class="mf">2.</span> <span class="o">+</span> <span class="n">ly</span><span class="o">**</span><span class="mf">2.</span><span class="p">)</span>
+        <span class="n">pixid</span> <span class="o">=</span> <span class="n">fourier_coordinate</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="nb">map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">bin_idx</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">ell_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">power_l</span> <span class="o">=</span> <span class="n">power_l</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">bin_idx</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">map_ft</span><span class="p">[</span><span class="n">pixid</span><span class="p">]</span><span class="o">**</span><span class="mf">2.</span><span class="p">))</span>
+        <span class="n">hits</span> <span class="o">=</span> <span class="n">hits</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">bin_idx</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">i</span><span class="p">,</span> <span class="n">power_l</span><span class="p">,</span> <span class="n">hits</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">outer_loop_body</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">power_l</span><span class="p">,</span> <span class="n">hits</span> <span class="o">=</span> <span class="n">val</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">power_l</span><span class="p">,</span> <span class="n">hits</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">fori_loop</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">loop_body</span><span class="p">,</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">power_l</span><span class="p">,</span> <span class="n">hits</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">i</span><span class="p">,</span> <span class="n">power_l</span><span class="p">,</span> <span class="n">hits</span>
+
+    <span class="n">_</span><span class="p">,</span> <span class="n">power_l</span><span class="p">,</span> <span class="n">hits</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">fori_loop</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">outer_loop_body</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">power_l</span><span class="p">,</span> <span class="n">hits</span><span class="p">))</span>
+
+    <span class="c1"># Calculate Cls based on the accumulated power and hits</span>
+    <span class="n">cls_values</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">hits</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">power_l</span> <span class="o">/</span> <span class="n">hits</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>  <span class="c1"># Ensure no division by zero</span>
+    <span class="c1"># cls_values = power_l/hits</span>
+    <span class="n">cls_values</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">cls_values</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># Clip negative values to zero if any</span>
+    <span class="n">ell_bins</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">ell_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">ell_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">normalization</span> <span class="o">=</span> <span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="nb">map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span><span class="o">**</span><span class="mi">2</span>
+
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ell_edges</span><span class="p">),</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ell_bins</span><span class="p">),</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cls_values</span> <span class="o">*</span> <span class="n">normalization</span><span class="p">)</span></div>
+
+
+<span class="c1"># @partial(jax.jit, static_argnums=(1, 4, 5))</span>
+<div class="viewcode-block" id="generate_field_with_target_cls_">
+<a class="viewcode-back" href="../../golconda.adjustcls.html#golconda.adjustcls.generate_field_with_target_cls_">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_field_with_target_cls_</span><span class="p">(</span><span class="n">input_field</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">target_cls</span><span class="p">,</span> <span class="n">target_ells</span><span class="p">,</span> <span class="n">ell_max</span><span class="o">=</span><span class="mi">40000</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adjusts the power spectrum of an input field to match a target power spectrum.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    - input_field (jax.numpy.ndarray): The input field as a 2D JAX array.</span>
+<span class="sd">    - angle (float): The field of view in degrees.</span>
+<span class="sd">    - target_cls (jax.numpy.ndarray): Target power spectrum values.</span>
+<span class="sd">    - target_ells (jax.numpy.ndarray): Target multipole moments associated with target_cls.</span>
+<span class="sd">    - ell_max (int): Maximum multipole moment to consider.</span>
+<span class="sd">    - n_bins (int): Number of bins to use for the power spectrum calculation.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    - jax.numpy.ndarray: The adjusted input field, transformed to match the target power spectrum.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="n">input_field</span><span class="o">.</span><span class="n">shape</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">target_cls</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">target_ells</span><span class="p">),</span> <span class="s2">&quot;target_cls and target_ells must have the same length&quot;</span>
+    <span class="k">assert</span> <span class="n">jnp</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">target_cls</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">),</span> <span class="s2">&quot;All target_cls values must be non-negative&quot;</span>
+    
+    <span class="c1"># Fourier transform of the input field</span>
+    <span class="n">field_ft</span> <span class="o">=</span> <span class="n">rfft2</span><span class="p">(</span><span class="n">input_field</span><span class="p">)</span> <span class="c1">##</span>
+    
+    <span class="c1"># Calculate the Cls for the input field</span>
+    <span class="n">ell_edges</span><span class="p">,</span> <span class="n">ell_bins</span><span class="p">,</span> <span class="n">field_cls</span> <span class="o">=</span> <span class="n">calculate_Cls</span><span class="p">(</span><span class="n">input_field</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ell_max</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">)</span>
+    <span class="nb">map</span> <span class="o">=</span> <span class="n">input_field</span>
+    <span class="c1"># Compute lpix and l values for FFT pixels</span>
+    <span class="n">pixel_size</span> <span class="o">=</span> <span class="n">angle</span><span class="o">*</span><span class="mi">60</span> <span class="o">/</span> <span class="nb">map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">pixel_size_rad_perpixel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">pixel_size</span> <span class="o">/</span> <span class="mf">180.</span> <span class="o">/</span> <span class="mf">60.</span>
+    <span class="n">lpix</span> <span class="o">=</span> <span class="mf">2.</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="n">pixel_size_rad_perpixel</span> <span class="o">/</span> <span class="mf">360.</span> 
+    <span class="n">lx</span> <span class="o">=</span> <span class="n">rfftfreq</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">lpix</span> <span class="c1">##</span>
+    <span class="n">ly</span> <span class="o">=</span> <span class="n">fftfreq</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span>  <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">lpix</span>
+    <span class="n">l</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">lx</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">ly</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    
+    <span class="c1"># Interpolate Cls for the input field and the target</span>
+    <span class="n">field_cls_interp</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">ell_bins</span><span class="p">,</span> <span class="n">field_cls</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">target_cls</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">Cl_field</span> <span class="o">=</span> <span class="n">field_cls_interp</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+    <span class="n">target_cls_interp</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">target_ells</span><span class="p">,</span> <span class="n">target_cls</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">target_cls</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">Cl_target</span> <span class="o">=</span> <span class="n">target_cls_interp</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+    
+    <span class="c1"># Adjust the amplitude based on the target Cls</span>
+    <span class="n">adjustment_factor</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Cl_target</span> <span class="o">/</span> <span class="n">Cl_field</span><span class="p">)</span>
+    <span class="n">adjusted_amplitude</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">field_ft</span><span class="p">)</span> <span class="o">*</span> <span class="n">adjustment_factor</span>
+    
+    <span class="c1"># Recombine adjusted amplitude with original phase</span>
+    <span class="n">adjusted_field_ft</span> <span class="o">=</span> <span class="n">adjusted_amplitude</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">field_ft</span><span class="p">))</span>
+    <span class="c1"># print(adjusted_field_ft.shape) </span>
+    <span class="c1"># Inverse Fourier Transform to get the adjusted field in real space</span>
+    <span class="n">adjusted_field</span> <span class="o">=</span> <span class="n">irfft2</span><span class="p">(</span><span class="n">adjusted_field_ft</span><span class="p">)</span> <span class="c1">##</span>
+    <span class="c1"># print(shape, adjusted_field.shape, field_ft.shape)</span>
+    <span class="k">return</span> <span class="n">adjusted_field</span><span class="o">.</span><span class="n">real</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Vilasini Tinnaneri Sreekanth.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
