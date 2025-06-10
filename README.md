@@ -20,8 +20,8 @@
 - 🔍 **Accurate reproduction** of cosmological statistics
 - 🚀 **Scalable** for large-scale survey analyses (LSST, Euclid)
 
-## GitHub Repository
-https://github.com/vilasinits/GOLCONDA/tree/refactor
+## Documentation
+You can find the documentation <a href="https://vilasinits.github.io/GOLCONDA/index.html">here</a>.
 
 ## Use Cases
 Cosmological parameter inference with non-Gaussian statistics
