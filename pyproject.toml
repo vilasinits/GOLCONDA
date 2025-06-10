@@ -24,7 +24,7 @@ dependencies = [
     "pyfftw",
     "lenspack"
     "scikit-learn",
-    "scikit-image",
+    "scikit-image"
 ]
 
 [project.optional-dependencies]
