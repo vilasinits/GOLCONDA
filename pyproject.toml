@@ -22,7 +22,7 @@ dependencies = [
     "jax",
     "pyccl",
     "pyfftw",
-    "lenspack"
+    "lenspack",
     "scikit-learn",
     "scikit-image"
 ]
