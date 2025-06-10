@@ -3,7 +3,7 @@ name: Deploy Sphinx Docs
 on:
   push:
     branches:
-      - refactor  # or your default branch
+      - refactor 
 
 permissions:
   contents: write
@@ -29,7 +29,7 @@ jobs:
 
       - name: 🏗️ Build Sphinx HTML
         run: |
-          sphinx-apidoc -Mfeo docs src/waveletl1
+          sphinx-apidoc -Mfeo docs src/golconda
           sphinx-build docs docs/_build
 
       - name: 🚀 Deploy to orphan gh-pages branch
