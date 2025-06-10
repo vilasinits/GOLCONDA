@@ -1,0 +1,207 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>golconda.image &mdash; GOLCONDA 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            GOLCONDA
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../golconda.html">golconda package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">GOLCONDA</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">golconda.image</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for golconda.image</h1><div class="highlight"><pre>
+<span></span><span class="c1"># from utils.config import *</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jax.numpy.fft</span><span class="w"> </span><span class="kn">import</span> <span class="n">ifft2</span><span class="p">,</span> <span class="n">fftn</span>
+
+<div class="viewcode-block" id="split_image_into_patches">
+<a class="viewcode-back" href="../../golconda.image.html#golconda.image.split_image_into_patches">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">split_image_into_patches</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">num_patches</span><span class="p">):</span>
+    <span class="c1"># Get the height and width of the image</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="c1"># Calculate the patch size (assuming n is divisible by the square root of num_patches)</span>
+    <span class="n">patch_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span> <span class="n">n</span> <span class="o">//</span> <span class="n">num_patches</span>    <span class="p">)</span>
+    
+    <span class="c1"># Check if num_patches is a perfect square and the image can be divided equally</span>
+    <span class="c1"># if n % patch_size != 0 or num_patches != (n // patch_size) ** 2:</span>
+    <span class="c1">#     raise ValueError(&quot;The image size and number of patches do not match for equal division.&quot;)</span>
+
+    <span class="c1"># Split the image into patches</span>
+    <span class="n">patches</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">patch_size</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">patch_size</span><span class="p">):</span>
+            <span class="n">patch</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">patch_size</span><span class="p">,</span> <span class="n">j</span><span class="p">:</span><span class="n">j</span><span class="o">+</span><span class="n">patch_size</span><span class="p">]</span>
+            <span class="n">patches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">patch</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">patches</span></div>
+
+
+<div class="viewcode-block" id="high_k_taper">
+<a class="viewcode-back" href="../../golconda.image.html#golconda.image.high_k_taper">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">high_k_taper</span><span class="p">(</span><span class="n">k_squared</span><span class="p">,</span> <span class="n">k_cutoff</span><span class="o">=</span><span class="mf">0.8</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply a Gaussian taper to prevent high-k noise amplification.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span> <span class="p">(</span><span class="n">k_squared</span> <span class="o">/</span> <span class="n">k_cutoff</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="wiener_deconvolution_flat">
+<a class="viewcode-back" href="../../golconda.image.html#golconda.image.wiener_deconvolution_flat">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">wiener_deconvolution_flat</span><span class="p">(</span><span class="n">decomposer</span><span class="p">,</span> <span class="n">kappa_smooth</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">reg_param</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span> <span class="n">k_cutoff</span><span class="o">=</span><span class="mf">0.8</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform Wiener deconvolution on a flat-sky convergence map with a robust regularization.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    kappa_smooth : np.ndarray</span>
+<span class="sd">        The filtered convergence map (real-space).</span>
+<span class="sd">    radius : float</span>
+<span class="sd">        The radius for the top-hat filter in Fourier space.</span>
+<span class="sd">    reg_param : float, optional</span>
+<span class="sd">        Regularization parameter (default: 1e-4).</span>
+<span class="sd">    k_cutoff : float, optional</span>
+<span class="sd">        Cutoff for suppressing high-k noise (default: 0.8).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        The deconvolved convergence map.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Fourier transform of the smoothed map</span>
+    <span class="n">kappa_smooth_ft</span> <span class="o">=</span> <span class="n">fftn</span><span class="p">(</span><span class="n">kappa_smooth</span><span class="p">)</span>
+
+    <span class="c1"># Compute k-grid (assuming decomposer has k-squared array)</span>
+    <span class="n">decomposer</span><span class="o">.</span><span class="n">set_size_dependent_params</span><span class="p">(</span><span class="n">kappa_smooth</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">filter_fourier</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">decomposer</span><span class="o">.</span><span class="n">get_top_hat_filter</span><span class="p">(</span><span class="n">radius</span><span class="p">))</span>  <span class="c1"># Convert JAX to NumPy</span>
+
+    <span class="c1"># Compute Wiener filter with adaptive regularization</span>
+    <span class="n">epsilon</span> <span class="o">=</span> <span class="n">reg_param</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">filter_fourier</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">wiener_filter</span> <span class="o">=</span> <span class="n">filter_fourier</span> <span class="o">/</span> <span class="p">(</span><span class="n">filter_fourier</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">epsilon</span><span class="p">)</span>
+
+    <span class="c1"># Apply high-k tapering</span>
+    <span class="n">k_squared</span> <span class="o">=</span> <span class="n">decomposer</span><span class="o">.</span><span class="n">k_squared</span>
+    <span class="n">taper</span> <span class="o">=</span> <span class="n">high_k_taper</span><span class="p">(</span><span class="n">k_squared</span><span class="p">,</span> <span class="n">k_cutoff</span><span class="p">)</span>
+    <span class="n">wiener_filter</span> <span class="o">*=</span> <span class="n">taper</span>  <span class="c1"># Smooth high-frequency components</span>
+
+    <span class="c1"># Apply Wiener filter in Fourier space</span>
+    <span class="n">kappa_deconv_ft</span> <span class="o">=</span> <span class="n">kappa_smooth_ft</span> <span class="o">*</span> <span class="n">wiener_filter</span>
+
+    <span class="c1"># Transform back to real space</span>
+    <span class="n">kappa_deconv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">ifft2</span><span class="p">(</span><span class="n">kappa_deconv_ft</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">kappa_deconv</span></div>
+
+
+<div class="viewcode-block" id="compute_binedges">
+<a class="viewcode-back" href="../../golconda.image.html#golconda.image.compute_binedges">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_binedges</span><span class="p">(</span><span class="n">bincenters</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute bin edges from bin centers.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        bincenters (numpy.ndarray): Array of bin centers.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        numpy.ndarray: Array of bin edges.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Calculate bin widths (differences between consecutive bin centers)</span>
+    <span class="n">bin_widths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">bincenters</span><span class="p">)</span>
+
+    <span class="c1"># Initialize an array for edges</span>
+    <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bincenters</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">bincenters</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">bin_widths</span> <span class="o">/</span> <span class="mi">2</span>  <span class="c1"># Midpoints between centers</span>
+
+    <span class="c1"># Add the first and last edges</span>
+    <span class="n">edges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">bincenters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">bin_widths</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">edges</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">bincenters</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">bin_widths</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">edges</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Vilasini Tinnaneri Sreekanth.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

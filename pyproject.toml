@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "GOLCONDA"
+version = "0.0.1"
+description = "Tool to generate kappa map"
+authors = [{ name = "Vilasini Tinnaneri Sreekanth" }]
+readme = "README.md"
+requires-python = ">=3.12"
+
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "pandas",
+    "healpy",
+    "mpmath",
+    "tqdm",
+    "astropy",
+    "jax",
+    "pyccl",
+    "pyfftw",
+    "lenspack"
+    "scikit-learn",
+    "scikit-image",
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyter",
+    "notebook",
+    "ipykernel",
+    "sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinx-rtd-theme"
+]
