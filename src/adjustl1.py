@@ -1,4 +1,5 @@
-from utils.config import *
+# from utils.config import *
+import numpy as np
 
 
 def calculate_histogram_l1norm(image, mask, nbins, density=False):
@@ -139,13 +140,13 @@ def adjust_map_l1(input_image, mask, targetvalues, density=False):
                 coeffs_in_bin[neg_indices] = np.minimum(coeffs_in_bin[neg_indices], 0)
 
             # Enforce final boundary constraints
-            index = np.where(coeffs_in_bin < bin_min)[0]
-            if len(index) > 0:
-                coeffs_in_bin[index] = bin_min
-            index = np.where(coeffs_in_bin > bin_max)[0]
-            if len(index) >0:
-                coeffs_in_bin[index] = bin_max
-            # coeffs_in_bin = np.clip(coeffs_in_bin, bin_min, bin_max)
+            # index = np.where(coeffs_in_bin < bin_min)[0]
+            # if len(index) > 0:
+            #     coeffs_in_bin[index] = bin_min
+            # index = np.where(coeffs_in_bin > bin_max)[0]
+            # if len(index) >0:
+            #     coeffs_in_bin[index] = bin_max
+            coeffs_in_bin = np.clip(coeffs_in_bin, bin_min, bin_max)
             
             # Compute L1 norm error for diagnostics
             current_l1_bin = np.sum(np.abs(coeffs_in_bin))
@@ -233,7 +234,6 @@ def adjust_pixel_values(image, mask, targetvalues, density=False):
     else:
         scaling_factor = 1
         
-    # scaling_factor = np.abs(image.shape[0]*image.shape[1]*(binedges_target[1]-binedges_target[0]))
     histogram_target = targetvalues['histogram']*scaling_factor
     l1_norm_target = targetvalues['l1_norm']*scaling_factor
     
@@ -288,6 +288,11 @@ def adjust_pixel_values(image, mask, targetvalues, density=False):
                     scaling_factor_positive = target_l1_norm * (positive_sum / total_sum) / positive_sum
                     bin_pixel_values[positive_indices] *= scaling_factor_positive
 
+                positive_indices = np.where(bin_pixel_values > 0)[0]
+                negative_indices = np.where(bin_pixel_values < 0)[0]
+                positive_sum = np.sum(bin_pixel_values[positive_indices])
+                negative_sum = np.sum(np.abs(bin_pixel_values[negative_indices]))
+                
                 if negative_sum > 0:
                     scaling_factor_negative = target_l1_norm * (negative_sum / total_sum) / negative_sum
                     bin_pixel_values[negative_indices] *= scaling_factor_negative
