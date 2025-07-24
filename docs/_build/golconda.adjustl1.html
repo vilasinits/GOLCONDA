@@ -1,0 +1,221 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>golconda.adjustl1 module &mdash; GOLCONDA 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="golconda.decomposer module" href="golconda.decomposer.html" />
+    <link rel="prev" title="golconda.adjustcls module" href="golconda.adjustcls.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            GOLCONDA
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="golconda.html">golconda package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="golconda.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="golconda.adjustcls.html">golconda.adjustcls module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">golconda.adjustl1 module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#golconda.adjustl1.adjust_map_l1"><code class="docutils literal notranslate"><span class="pre">adjust_map_l1()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#golconda.adjustl1.adjust_pixel_values"><code class="docutils literal notranslate"><span class="pre">adjust_pixel_values()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#golconda.adjustl1.calculate_histogram_l1norm"><code class="docutils literal notranslate"><span class="pre">calculate_histogram_l1norm()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#golconda.adjustl1.process_image"><code class="docutils literal notranslate"><span class="pre">process_image()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="golconda.decomposer.html">golconda.decomposer module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="golconda.image.html">golconda.image module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="golconda.loadsimulation.html">golconda.loadsimulation module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="golconda.moments.html">golconda.moments module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">GOLCONDA</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="golconda.html">golconda package</a></li>
+      <li class="breadcrumb-item active">golconda.adjustl1 module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/golconda.adjustl1.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-golconda.adjustl1">
+<span id="golconda-adjustl1-module"></span><h1>golconda.adjustl1 module<a class="headerlink" href="#module-golconda.adjustl1" title="Link to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="golconda.adjustl1.adjust_map_l1">
+<span class="sig-prename descclassname"><span class="pre">golconda.adjustl1.</span></span><span class="sig-name descname"><span class="pre">adjust_map_l1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">targetvalues</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustl1.html#adjust_map_l1"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#golconda.adjustl1.adjust_map_l1" title="Link to this definition"></a></dt>
+<dd><p>Adjusts wavelet coefficients of an input image to match the target histogram
+and L1 norm per bin.</p>
+<p>Parameters:
+- input_image (2D array): Input wavelet coefficient map for a given scale.
+- mask (2D array): Boolean mask indicating which coefficients should be modified.
+- targetvalues (dict): Dictionary containing target statistics:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>‘histogram’ (1D array): Target histogram (normalized to sum to 1).</p></li>
+<li><p>‘binedges’ (1D array): Bin edges.</p></li>
+<li><p>‘l1_norm’ (1D array): Target L1 norm per bin.</p></li>
+<li><p>‘bincenters’ (1D array): Bin centers.</p></li>
+</ul>
+</div></blockquote>
+<p>Returns:
+- adjusted_image (2D array): Adjusted wavelet coefficient map.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="golconda.adjustl1.adjust_pixel_values">
+<span class="sig-prename descclassname"><span class="pre">golconda.adjustl1.</span></span><span class="sig-name descname"><span class="pre">adjust_pixel_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">targetvalues</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustl1.html#adjust_pixel_values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#golconda.adjustl1.adjust_pixel_values" title="Link to this definition"></a></dt>
+<dd><p>Adjusts the pixel values of an image based on target statistics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<em>ndarray</em>) – The input image.</p></li>
+<li><p><strong>mask</strong> (<em>ndarray</em>) – The mask indicating valid pixels.</p></li>
+<li><p><strong>targetvalues</strong> (<em>dict</em>) – The target statistics including ‘binedges’, ‘histogram’, and ‘l1_norm’.</p></li>
+<li><p><strong>density</strong> (<em>bool</em><em>, </em><em>optional</em>) – Flag indicating whether to use density scaling. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The adjusted image.
+float: The total error normalized by the maximum L1 norm target.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="golconda.adjustl1.calculate_histogram_l1norm">
+<span class="sig-prename descclassname"><span class="pre">golconda.adjustl1.</span></span><span class="sig-name descname"><span class="pre">calculate_histogram_l1norm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbins</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustl1.html#calculate_histogram_l1norm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#golconda.adjustl1.calculate_histogram_l1norm" title="Link to this definition"></a></dt>
+<dd><p>Calculates the histogram and L1 norm of an image while accounting for a mask.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<em>np.ndarray</em>) – The input image.</p></li>
+<li><p><strong>mask</strong> (<em>np.ndarray</em>) – The mask to apply on the image (1 for valid pixels, 0 to ignore).</p></li>
+<li><p><strong>nbins</strong> (<em>int</em><em> or </em><em>array-like</em>) – Number of bins or bin edges for the histogram.</p></li>
+<li><p><strong>density</strong> (<em>bool</em>) – Whether to compute a density-normalized histogram.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The edges of the bins.
+bincenters (np.ndarray): The center of each bin.
+hist (np.ndarray): The histogram values for each bin.
+bin_l1_norm (list): The L1 norm for each bin.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>binedges (np.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="golconda.adjustl1.process_image">
+<span class="sig-prename descclassname"><span class="pre">golconda.adjustl1.</span></span><span class="sig-name descname"><span class="pre">process_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nscales</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbins</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decomposer_class</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/golconda/adjustl1.html#process_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#golconda.adjustl1.process_image" title="Link to this definition"></a></dt>
+<dd><p>Process the target map to compute wavelet coefficients, histograms, L1 norms, and power spectrum.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target</strong> (<em>np.ndarray</em>) – The input map to analyze.</p></li>
+<li><p><strong>filter_type</strong> (<em>str</em>) – The type of filter to use for wavelet decomposition.</p></li>
+<li><p><strong>nscales</strong> (<em>int</em>) – The number of scales for decomposition.</p></li>
+<li><p><strong>nbins</strong> (<em>list</em><em>[</em><em>int</em><em>]</em>) – Number of bins for the histogram at each scale.</p></li>
+<li><p><strong>pixelsize</strong> (<em>float</em>) – Pixel size for power spectrum adjustment.</p></li>
+<li><p><strong>adjuster_class</strong> – A class implementing compute_power_spectrum().</p></li>
+<li><p><strong>decomposer_class</strong> – A class implementing decompose().</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary containing wavelet coefficient statistics and power spectrum information.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="golconda.adjustcls.html" class="btn btn-neutral float-left" title="golconda.adjustcls module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="golconda.decomposer.html" class="btn btn-neutral float-right" title="golconda.decomposer module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Vilasini Tinnaneri Sreekanth.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

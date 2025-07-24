@@ -1,0 +1,41 @@
+name: Deploy Sphinx Docs
+
+on:
+  push:
+    branches:
+      - refactor 
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout main branch
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+          pip install sphinx sphinx_rtd_theme myst-parser numpydoc
+
+      - name: 🏗️ Build Sphinx HTML
+        run: |
+          sphinx-apidoc -Mfeo docs src/golconda
+          sphinx-build docs docs/_build
+
+      - name: 🚀 Deploy to orphan gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/_build
+          publish_branch: gh-pages
+          force_orphan: true

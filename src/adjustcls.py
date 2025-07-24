@@ -1,5 +1,10 @@
-from utils.config import *
-
+# from utils.config import *
+import numpy as np
+import jax
+import jax.numpy as jnp
+import pyfftw
+from jax.numpy.fft import rfft2, irfft2, rfftfreq, fftfreq, ifft2, fftn
+from scipy.interpolate import interp1d
 class PowerSpectrumAdjuster:
     def __init__(self, map_shape, pixel_size):
         """
@@ -68,12 +73,12 @@ class PowerSpectrumAdjuster:
         powerspectrum = radial_profile[:nyquist]
 
         # 1D Power spectrum in [rad^2]
-        power_spectrum_1d = powerspectrum #* (self.pix_to_rad**2)
+        power_spectrum_1d = powerspectrum * (self.pix_to_rad**2)
 
         # Multipole moments (ell)
         ks = jnp.arange(power_spectrum_1d.shape[0])
-        ell = 2. * np.pi * ks / (self.pix_to_rad * self.N)
-
+        # ell = 2. * np.pi * ks / (self.pix_to_rad * self.N)
+        ell = 4. * np.pi * np.pi * ks 
         return ell, power_spectrum_1d
 
     
@@ -90,7 +95,7 @@ class PowerSpectrumAdjuster:
         - adjusted_map: 2D numpy array, the adjusted map.
         """
         # Ensure the input map has zero mean
-        input_map = input_map - np.mean(input_map)
+        # input_map = input_map - np.mean(input_map)
 
         # Compute the 2D Fourier grid (if not precomputed)
         # if not hasattr(self, 'ell2d'):
@@ -239,20 +244,128 @@ class PowerSpectrum:
         adjusted_field_ft = adjusted_amplitude * jnp.exp(1j * jnp.angle(field_ft))
         return irfft2(adjusted_field_ft).real
     
-if __name__ == "__main__":
-    # Generate a random input map
-    input_map = np.random.rand(256, 256)
-    pixelsize = 0.5  # Example pixel size in degrees
+# if __name__ == "__main__":
+#     # Generate a random input map
+#     input_map = np.random.rand(256, 256)
+#     pixelsize = 0.5  # Example pixel size in degrees
 
-    # Instantiate the PowerSpectrum class
-    power_spectrum_calculator = PowerSpectrum(input_map, pixelsize)
+#     # Instantiate the PowerSpectrum class
+#     power_spectrum_calculator = PowerSpectrum(input_map, pixelsize)
 
-    # Compute the power spectrum
-    ell_edges, ell_bins, cls_values = power_spectrum_calculator.calculate_Cls(input_map)
-    print("Power spectrum calculated:", cls_values)
+#     # Compute the power spectrum
+#     ell_edges, ell_bins, cls_values = power_spectrum_calculator.calculate_Cls(input_map)
+#     print("Power spectrum calculated:", cls_values)
 
-    # Generate a field with a target power spectrum
-    target_ells = np.linspace(ell_edges.min(), ell_edges.max(), len(cls_values))
-    target_cls = cls_values * 1.2  # Example modification of Cls values
-    generated_field = power_spectrum_calculator.generate_field_with_target_cls(input_map, target_cls, target_ells)
-    print("Generated field with target power spectrum.")
+#     # Generate a field with a target power spectrum
+#     target_ells = np.linspace(ell_edges.min(), ell_edges.max(), len(cls_values))
+#     target_cls = cls_values * 1.2  # Example modification of Cls values
+#     generated_field = power_spectrum_calculator.generate_field_with_target_cls(input_map, target_cls, target_ells)
+#     print("Generated field with target power spectrum.")
+
+
+def fourier_coordinate(x, y, map_size):
+    return (map_size // 2 + 1) * x + y
+
+def calculate_Cls_(map, angle, ell_min, ell_max, n_bins):
+    """
+    map: the image from which the angular power spectra (Cls) has to be calculated
+    angle: side angle in the units of degree
+    ell_min: the minimum multipole moment to get the Cls
+    ell_max: the maximum multipole moment to get the Cls
+    n_bins: number of bins in the ells
+    """
+    ell_min = jnp.array(ell_min)
+    ell_max = jnp.array(ell_max)
+    # n_bins = jnp.array(n_bins, int)
+
+    # Calculate the Fourier Transforms
+    map_ft = rfft2(map) ## rfft2
+    map_ft = map_ft.flatten()
+    ell_edges = jnp.linspace(ell_min, ell_max, num=n_bins+1)
+
+    # Define pixel physical size in Fourier space
+    pixel_size = angle*60 / map.shape[0]
+    pixel_size_rad_perpixel = np.pi * pixel_size / 180. / 60.
+    lpix = 2. * np.pi / pixel_size_rad_perpixel / 360. 
+    # Initialize arrays to store power and hits for each ell bin
+    power_l = jnp.zeros(n_bins)
+    hits = jnp.zeros(n_bins)
+    
+    def loop_body(j, val):
+        i, power_l, hits = val
+        lx = jnp.minimum(i, map.shape[1] - i) * lpix
+        ly = j * lpix
+        l = jnp.sqrt(lx**2. + ly**2.)
+        pixid = fourier_coordinate(i, j, map.shape[1])
+        bin_idx = jnp.digitize(l, ell_edges) - 1
+        power_l = power_l.at[bin_idx].add(jnp.abs(map_ft[pixid]**2.))
+        hits = hits.at[bin_idx].add(1)
+        return i, power_l, hits
+
+    def outer_loop_body(i, val):
+        _, power_l, hits = val
+        _, power_l, hits = jax.lax.fori_loop(0, map.shape[0], loop_body, (i, power_l, hits))
+        return i, power_l, hits
+
+    _, power_l, hits = jax.lax.fori_loop(0, map.shape[1], outer_loop_body, (0, power_l, hits))
+
+    # Calculate Cls based on the accumulated power and hits
+    cls_values = jnp.where(hits > 0, power_l / hits, 0.0)  # Ensure no division by zero
+    # cls_values = power_l/hits
+    cls_values = jnp.maximum(cls_values, 0)  # Clip negative values to zero if any
+    ell_bins = 0.5 * (ell_edges[1:] + ell_edges[:-1])
+    normalization = (jnp.deg2rad(angle) / (map.shape[0] * map.shape[0]))**2
+
+    return jnp.array(ell_edges), jnp.array(ell_bins), jnp.array(cls_values * normalization)
+
+# @partial(jax.jit, static_argnums=(1, 4, 5))
+def generate_field_with_target_cls_(input_field, angle, target_cls, target_ells, ell_max=40000, n_bins=50):
+    """
+    Adjusts the power spectrum of an input field to match a target power spectrum.
+
+    Parameters:
+    - input_field (jax.numpy.ndarray): The input field as a 2D JAX array.
+    - angle (float): The field of view in degrees.
+    - target_cls (jax.numpy.ndarray): Target power spectrum values.
+    - target_ells (jax.numpy.ndarray): Target multipole moments associated with target_cls.
+    - ell_max (int): Maximum multipole moment to consider.
+    - n_bins (int): Number of bins to use for the power spectrum calculation.
+
+    Returns:
+    - jax.numpy.ndarray: The adjusted input field, transformed to match the target power spectrum.
+    """
+    shape = input_field.shape
+    assert len(target_cls) == len(target_ells), "target_cls and target_ells must have the same length"
+    assert jnp.all(target_cls >= 0), "All target_cls values must be non-negative"
+    
+    # Fourier transform of the input field
+    field_ft = rfft2(input_field) ##
+    
+    # Calculate the Cls for the input field
+    ell_edges, ell_bins, field_cls = calculate_Cls(input_field, angle, 0, ell_max, n_bins)
+    map = input_field
+    # Compute lpix and l values for FFT pixels
+    pixel_size = angle*60 / map.shape[0]
+    pixel_size_rad_perpixel = np.pi * pixel_size / 180. / 60.
+    lpix = 2. * np.pi / pixel_size_rad_perpixel / 360. 
+    lx = rfftfreq(shape[0]) * shape[0] * lpix ##
+    ly = fftfreq(shape[1]) *  shape[1] * lpix
+    l = jnp.sqrt(lx[np.newaxis, :]**2 + ly[:, np.newaxis]**2)
+    
+    # Interpolate Cls for the input field and the target
+    field_cls_interp = interp1d(ell_bins, field_cls, kind="linear", bounds_error=False, fill_value=target_cls[-1])
+    Cl_field = field_cls_interp(l)
+    target_cls_interp = interp1d(target_ells, target_cls, kind="linear", bounds_error=False, fill_value=target_cls[-1])
+    Cl_target = target_cls_interp(l)
+    
+    # Adjust the amplitude based on the target Cls
+    adjustment_factor = jnp.sqrt(Cl_target / Cl_field)
+    adjusted_amplitude = jnp.abs(field_ft) * adjustment_factor
+    
+    # Recombine adjusted amplitude with original phase
+    adjusted_field_ft = adjusted_amplitude * jnp.exp(1j * jnp.angle(field_ft))
+    # print(adjusted_field_ft.shape) 
+    # Inverse Fourier Transform to get the adjusted field in real space
+    adjusted_field = irfft2(adjusted_field_ft) ##
+    # print(shape, adjusted_field.shape, field_ft.shape)
+    return adjusted_field.real
