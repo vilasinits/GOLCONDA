@@ -2,8 +2,6 @@
 import numpy as np
 import jax
 import jax.numpy as jnp
-from scipy.signal import fftconvolve
-from scipy.interpolate import interp1d as _interp1d
 
 
 def calculate_histogram_l1norm(image, mask, nbins, density=False):
@@ -330,107 +328,6 @@ def adjust_pixel_values(image, mask, targetvalues, density=False):
     # Write back the adjusted pixel values to the original image
     image[mask_indices] = masked_pixel_values
     return image, total_error/np.max(l1_norm_target)
-
-
-# ---------------------------------------------------------------------------
-# Full-map PDF prediction from per-scale theory inputs
-# ---------------------------------------------------------------------------
-
-def predict_fullmap_pdf_from_scales(target_values, nscales, output_bins):
-    """
-    Predict the approximate full-map pixel PDF by convolving per-scale
-    wavelet coefficient PDFs.
-
-    Uses the identity ``l1_per_bin ≈ PDF(bin_center) × |bin_center|`` to
-    recover each scale's PDF from theory inputs (Cls → σⱼ, S₁ → L1 per bin),
-    then convolves all per-scale PDFs under the independence assumption.
-
-    The convolution captures the additive contribution of each scale's
-    non-Gaussianity to the full-map distribution.  It underestimates the
-    extreme non-Gaussian tails driven by inter-scale correlations (halos
-    correlated across all scales), but is strictly better than using no
-    full-map constraint at all.
-
-    Parameters
-    ----------
-    target_values : dict
-        Output of :func:`process_image`.  Must contain ``'scale_0'`` through
-        ``'scale_{nscales}'``, each with ``'bincenters'`` and ``'l1_norm'``.
-    nscales : int
-        Number of wavelet scales (``'scale_{nscales}'`` is the coarse residual).
-    output_bins : ndarray, shape (B,)
-        Bin centres spanning the pixel value range of the target map.
-
-    Returns
-    -------
-    dict
-        Keys ``'binedges'``, ``'bincenters'``, ``'histogram'``, ``'l1_norm'``
-        in *density* format — pass with ``density=True`` to
-        :func:`adjust_map_l1`.
-    """
-    def _recover_pdf(centers, l1):
-        """PDF(x) = l1_per_bin(x) / |x|, normalised to integrate to 1."""
-        safe = np.maximum(np.abs(centers), 1e-10)
-        pdf = l1 / safe
-        dx = centers[1] - centers[0]
-        area = np.sum(pdf) * dx
-        return pdf / area if area > 0 else pdf
-
-    # Initialise with scale 0
-    tv0 = target_values['scale_0']
-    combined_pdf = _recover_pdf(tv0['bincenters'], tv0['l1_norm'])
-    combined_centers = tv0['bincenters'].copy()
-    dx = combined_centers[1] - combined_centers[0]
-
-    for j in range(1, nscales + 1):
-        tv_j = target_values[f'scale_{j}']
-        centers_j = tv_j['bincenters'].copy()
-        pdf_j = _recover_pdf(centers_j, tv_j['l1_norm'])
-        dx_j = centers_j[1] - centers_j[0]
-
-        # Resample to the running dx if scales use different bin widths
-        if not np.isclose(dx, dx_j, rtol=0.05):
-            f_j = _interp1d(centers_j, pdf_j, bounds_error=False, fill_value=0.0)
-            centers_j = np.arange(centers_j[0], centers_j[-1] + dx, dx)
-            pdf_j = np.maximum(f_j(centers_j), 0.0)
-            area_j = np.sum(pdf_j) * dx
-            if area_j > 0:
-                pdf_j /= area_j
-
-        # PDF of the sum of two independent RVs = convolution of their PDFs
-        conv = fftconvolve(combined_pdf, pdf_j, mode='full') * dx
-        conv = np.maximum(conv, 0.0)
-        area = np.sum(conv) * dx
-        if area > 0:
-            conv /= area
-
-        new_min = combined_centers[0] + centers_j[0]
-        combined_centers = new_min + np.arange(len(conv)) * dx
-        combined_pdf = conv
-
-    # Resample onto the requested output_bins
-    f_out = _interp1d(combined_centers, combined_pdf,
-                      bounds_error=False, fill_value=0.0)
-    pdf_out = np.maximum(f_out(output_bins), 0.0)
-    bin_width = output_bins[1] - output_bins[0]
-    area = np.sum(pdf_out) * bin_width
-    if area > 0:
-        pdf_out /= area
-
-    # Convert back to L1-per-bin density format: l1 = PDF × |bin_center|
-    l1_out = pdf_out * np.maximum(np.abs(output_bins), 1e-10)
-
-    binedges = np.empty(len(output_bins) + 1)
-    binedges[:-1] = output_bins - bin_width / 2
-    binedges[-1]  = output_bins[-1] + bin_width / 2
-
-    # density=True format: histogram = PDF density, l1_norm = PDF × |center|
-    return {
-        'binedges':   binedges,
-        'bincenters': output_bins,
-        'histogram':  pdf_out,
-        'l1_norm':    l1_out,
-    }
 
 
 # ---------------------------------------------------------------------------
