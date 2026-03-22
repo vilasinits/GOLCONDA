@@ -6,19 +6,36 @@ import jax.numpy as jnp
 
 def calculate_histogram_l1norm(image, mask, nbins, density=False):
     """
-    Calculates the histogram and L1 norm of an image while accounting for a mask.
-    
-    Parameters:
-        image (np.ndarray): The input image.
-        mask (np.ndarray): The mask to apply on the image (1 for valid pixels, 0 to ignore).
-        nbins (int or array-like): Number of bins or bin edges for the histogram.
-        density (bool): Whether to compute a density-normalized histogram.
-    
-    Returns:
-        binedges (np.ndarray): The edges of the bins.
-        bincenters (np.ndarray): The center of each bin.
-        hist (np.ndarray): The histogram values for each bin.
-        bin_l1_norm (list): The L1 norm for each bin.
+    Calculate the histogram and per-bin ℓ₁ norm of an image with optional masking.
+
+    The ℓ₁ norm is always stored normalised as
+    ``Σ|x in bin| / (total_pixels × bin_width)`` — equivalent to
+    ``PDF(bin_centre) × |bin_centre|`` — so that it is portable across maps
+    of different sizes.
+
+    Parameters
+    ----------
+    image : ndarray, shape (N, M)
+        Input image.
+    mask : ndarray or None
+        Boolean mask; pixels where ``mask == 1`` are included.  Pass ``None``
+        to include all pixels.
+    nbins : int or array-like
+        Number of equally-spaced bins, or an explicit array of bin edges.
+    density : bool, optional
+        If ``True`` the histogram is returned as a probability density
+        (``counts / (total × bin_width)``).  Default is ``False`` (raw counts).
+
+    Returns
+    -------
+    binedges : ndarray, shape (nbins+1,)
+        Edges of the histogram bins.
+    bincenters : ndarray, shape (nbins,)
+        Centre of each bin.
+    hist : ndarray, shape (nbins,)
+        Histogram values (raw counts or density depending on ``density``).
+    bin_l1_norm : ndarray, shape (nbins,)
+        Per-bin ℓ₁ norm, normalised per pixel per bin width.
     """
     # If no mask is provided, assume all pixels are valid
     if mask is None:
@@ -57,20 +74,36 @@ def calculate_histogram_l1norm(image, mask, nbins, density=False):
 
 def adjust_map_l1(input_image, mask, targetvalues, density=False):
     """
-    Adjusts wavelet coefficients of an input image to match the target histogram 
-    and L1 norm per bin.
+    Adjust wavelet coefficients to match a target per-bin histogram and ℓ₁ norm.
 
-    Parameters:
-    - input_image (2D array): Input wavelet coefficient map for a given scale.
-    - mask (2D array): Boolean mask indicating which coefficients should be modified.
-    - targetvalues (dict): Dictionary containing target statistics:
-        - 'histogram' (1D array): Target histogram (normalized to sum to 1).
-        - 'binedges' (1D array): Bin edges.
-        - 'l1_norm' (1D array): Target L1 norm per bin.
-        - 'bincenters' (1D array): Bin centers.
+    Pixels are sorted, assigned to bins according to ``targetvalues['histogram']``,
+    and shifted within each bin so that the per-bin ℓ₁ norm matches
+    ``targetvalues['l1_norm']``.  Positive and negative coefficients are adjusted
+    in two passes to preserve sign structure, then clipped to the bin boundaries.
 
-    Returns:
-    - adjusted_image (2D array): Adjusted wavelet coefficient map.
+    Parameters
+    ----------
+    input_image : ndarray, shape (N, M)
+        Input wavelet coefficient map for a single decomposition scale.
+    mask : ndarray or None
+        Boolean mask; only pixels where ``mask != 0`` are modified.  Pass
+        ``None`` to process the entire map.
+    targetvalues : dict
+        Target statistics, as produced by :func:`process_image`.  Required
+        keys: ``'binedges'``, ``'histogram'``, ``'l1_norm'``.  Optional key:
+        ``'source_pixels'`` (total pixels in the source map; used to rescale
+        raw histogram counts when ``density=False``).
+    density : bool, optional
+        Set ``True`` when ``targetvalues['histogram']`` is a probability
+        density rather than raw counts.  Default is ``False``.
+
+    Returns
+    -------
+    adjusted_image : ndarray, shape (N, M)
+        Copy of ``input_image`` with masked pixels adjusted.
+    normalised_l1_error : float
+        Total absolute ℓ₁ error across all bins, normalised by the maximum
+        per-bin target ℓ₁ norm.
     """
     # Retrieve target statistics
     bin_edges = targetvalues['binedges']
@@ -178,19 +211,34 @@ def adjust_map_l1(input_image, mask, targetvalues, density=False):
 
 def process_image(target, filter_type, nscales, nbins, decomposer_class, density=False):
     """
-    Process the target map to compute wavelet coefficients, histograms, L1 norms, and power spectrum.
+    Extract per-scale wavelet statistics from a target map.
 
-    Parameters:
-        target (np.ndarray): The input map to analyze.
-        filter_type (str): The type of filter to use for wavelet decomposition.
-        nscales (int): The number of scales for decomposition.
-        nbins (list[int]): Number of bins for the histogram at each scale.
-        pixelsize (float): Pixel size for power spectrum adjustment.
-        adjuster_class: A class implementing compute_power_spectrum().
-        decomposer_class: A class implementing decompose().
+    Decomposes ``target`` into ``nscales + 1`` wavelet bands and computes the
+    histogram and ℓ₁ norm for each band.  The returned dictionary is used
+    directly as the target for :func:`adjust_map_l1` during emulation.
 
-    Returns:
-        dict: A dictionary containing wavelet coefficient statistics and power spectrum information.
+    Parameters
+    ----------
+    target : ndarray, shape (N, M)
+        Input convergence map to analyse.
+    filter_type : {'tophat', 'starlet'}
+        Wavelet filter type passed to :meth:`~golconda.WaveletDecomposer.decompose`.
+    nscales : int
+        Number of wavelet scales.  The coarse residual is stored as
+        ``'scale_{nscales}'``.
+    nbins : list of int, length nscales+1
+        Number of histogram bins at each scale (index ``j`` → scale ``j``).
+    decomposer_class : WaveletDecomposer
+        Initialised decomposer instance.
+    density : bool, optional
+        Passed to :func:`calculate_histogram_l1norm`.  Default is ``False``.
+
+    Returns
+    -------
+    target_values : dict
+        Dictionary with keys ``'scale_0'``, …, ``'scale_{nscales}'`` and
+        ``'coefs'``.  Each scale entry contains ``'histogram'``, ``'binedges'``,
+        ``'l1_norm'``, ``'bincenters'``, ``'sigma'``, and ``'source_pixels'``.
     """
     target_values = {}
 
@@ -226,20 +274,32 @@ def process_image(target, filter_type, nscales, nbins, decomposer_class, density
 
 def adjust_pixel_values(image, mask, targetvalues, density=False):
     """
-    Adjusts the pixel values of an image based on target statistics.
+    Adjust pixel values of an image to match target histogram and ℓ₁-norm statistics.
 
-    Args:
-        image (ndarray): The input image.
-        mask (ndarray): The mask indicating valid pixels.
-        targetvalues (dict): The target statistics including 'binedges', 'histogram', and 'l1_norm'.
-        density (bool, optional): Flag indicating whether to use density scaling. Defaults to False.
+    Similar to :func:`adjust_map_l1` but uses proportional scaling (rather than
+    additive shifts) to match the target ℓ₁ norm within each bin, keeping
+    positive and negative contributions separately scaled.
 
-    Returns:
-        ndarray: The adjusted image.
-        float: The total error normalized by the maximum L1 norm target.
+    Parameters
+    ----------
+    image : ndarray, shape (N, M)
+        Input image whose pixel values will be adjusted in-place.
+    mask : ndarray or None
+        Boolean mask; only pixels where ``mask != 0`` are modified.
+    targetvalues : dict
+        Target statistics with keys ``'binedges'``, ``'histogram'``, and
+        ``'l1_norm'``.
+    density : bool, optional
+        If ``True``, ``histogram`` and ``l1_norm`` are treated as probability
+        densities and rescaled to absolute counts.  Default is ``False``.
 
+    Returns
+    -------
+    image : ndarray, shape (N, M)
+        Adjusted image (modified in-place and returned).
+    normalised_error : float
+        Total absolute ℓ₁ error normalised by the maximum per-bin target.
     """
-    # Function body...
     # Retrieve target statistics
     binedges_target = targetvalues['binedges']
     if density:

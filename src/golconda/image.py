@@ -3,6 +3,23 @@ import numpy as np
 from jax.numpy.fft import ifft2, fftn
 
 def split_image_into_patches(image, num_patches):
+    """
+    Split a square image into a grid of equal-sized patches.
+
+    Parameters
+    ----------
+    image : ndarray, shape (N, N)
+        Square input image.  ``N`` must be divisible by ``num_patches``.
+    num_patches : int
+        Number of patches per side, so the total number of patches returned
+        is ``num_patches ** 2``.
+
+    Returns
+    -------
+    list of ndarray
+        Patches in row-major order, each of shape
+        ``(N // num_patches, N // num_patches)``.
+    """
     # Get the height and width of the image
     n = image.shape[0]
     
@@ -23,28 +40,51 @@ def split_image_into_patches(image, num_patches):
     return patches
 
 def high_k_taper(k_squared, k_cutoff=0.8):
-    """Apply a Gaussian taper to prevent high-k noise amplification."""
+    """
+    Apply a Gaussian taper to suppress high-k noise amplification.
+
+    Parameters
+    ----------
+    k_squared : ndarray
+        Array of squared wavenumber values.
+    k_cutoff : float, optional
+        Wavenumber cutoff scale.  Frequencies above this are exponentially
+        suppressed.  Default is ``0.8``.
+
+    Returns
+    -------
+    ndarray
+        Taper weights in ``[0, 1]``, same shape as ``k_squared``.
+    """
     return np.exp(- (k_squared / k_cutoff**2))
 
 def wiener_deconvolution_flat(decomposer, kappa_smooth, radius, reg_param=1e-4, k_cutoff=0.8):
     """
-    Perform Wiener deconvolution on a flat-sky convergence map with a robust regularization.
+    Perform Wiener deconvolution of a flat-sky convergence map.
 
-    Parameters:
-    -----------
-    kappa_smooth : np.ndarray
-        The filtered convergence map (real-space).
+    Deconvolves the top-hat smoothing kernel from ``kappa_smooth`` using a
+    Wiener filter with Gaussian high-k tapering to prevent noise amplification.
+
+    Parameters
+    ----------
+    decomposer : WaveletDecomposer
+        Decomposer instance used to compute the top-hat Fourier filter and
+        the ``k_squared`` grid.
+    kappa_smooth : ndarray, shape (N, N)
+        Filtered convergence map in real space.
     radius : float
-        The radius for the top-hat filter in Fourier space.
+        Radius of the top-hat filter used to smooth the map, in pixel units.
     reg_param : float, optional
-        Regularization parameter (default: 1e-4).
+        Tikhonov regularisation parameter.  Scaled by ``max(|H|²)`` internally.
+        Default is ``1e-4``.
     k_cutoff : float, optional
-        Cutoff for suppressing high-k noise (default: 0.8).
+        Wavenumber cutoff for the Gaussian high-k taper (see
+        :func:`high_k_taper`).  Default is ``0.8``.
 
-    Returns:
-    --------
-    np.ndarray
-        The deconvolved convergence map.
+    Returns
+    -------
+    ndarray, shape (N, N)
+        Deconvolved convergence map.
     """
     # Fourier transform of the smoothed map
     kappa_smooth_ft = fftn(kappa_smooth)
@@ -72,13 +112,18 @@ def wiener_deconvolution_flat(decomposer, kappa_smooth, radius, reg_param=1e-4, 
 
 def compute_binedges(bincenters):
     """
-    Compute bin edges from bin centers.
+    Compute bin edges from an array of bin centres.
 
-    Parameters:
-        bincenters (numpy.ndarray): Array of bin centers.
+    Parameters
+    ----------
+    bincenters : ndarray, shape (B,)
+        Uniformly or non-uniformly spaced bin centre values.
 
-    Returns:
-        numpy.ndarray: Array of bin edges.
+    Returns
+    -------
+    edges : ndarray, shape (B+1,)
+        Bin edges such that ``edges[i]`` and ``edges[i+1]`` bound
+        ``bincenters[i]``.
     """
     # Calculate bin widths (differences between consecutive bin centers)
     bin_widths = np.diff(bincenters)

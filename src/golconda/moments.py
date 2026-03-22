@@ -3,13 +3,23 @@ import numpy as np
 
 def get_moments_from_map(map_values):
     """
-    Calculates the moments (mean, variance, skewness, kurtosis) from a 2D map.
+    Calculate the first four moments of a 2D map.
 
-    Parameters:
-        map_values (numpy.ndarray): A 2D array representing the map values (e.g., convergence, density field).
+    Parameters
+    ----------
+    map_values : ndarray, shape (N, M)
+        2-D map (e.g. convergence or density field).
 
-    Returns:
-        tuple: Contains mean, variance, skewness, kurtosis of the map values.
+    Returns
+    -------
+    mean : float
+        Mean pixel value.
+    variance : float
+        Variance of pixel values.
+    skewness : float
+        Skewness (third standardised moment).
+    kurtosis : float
+        Excess kurtosis (fourth standardised moment minus 3).
     """
     # Flatten the map to treat it as a distribution of values
     flattened_values = map_values.flatten()

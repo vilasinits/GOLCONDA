@@ -6,13 +6,37 @@ import pyfftw
 from jax.numpy.fft import rfft2, irfft2, rfftfreq, fftfreq, ifft2, fftn
 from scipy.interpolate import interp1d
 class PowerSpectrumAdjuster:
+    """
+    Adjust a flat-sky map so its angular power spectrum matches a target.
+
+    Uses pyFFTW for forward/inverse FFTs and scales Fourier amplitudes by
+    ``sqrt(C_ell_target / C_ell_input)`` while preserving phases.
+
+    Parameters
+    ----------
+    map_shape : tuple of int
+        Shape ``(N, N)`` of the input map (square maps assumed).
+    pixel_size : float
+        Pixel size in arcminutes per pixel.
+
+    Attributes
+    ----------
+    pix_to_rad : float
+        Pixel size converted to radians per pixel.
+    ell2d : ndarray
+        2-D multipole-moment grid.
+    radial_bins : ndarray
+        Precomputed integer radial-bin indices used for binning.
+    """
+
     def __init__(self, map_shape, pixel_size):
         """
-        Initialize the precomputed values for power spectrum adjustment.
-
-        Parameters:
-        - map_shape: tuple, the shape of the input map (assumes square maps).
-        - pixel_size: float, the pixel size in arcmin/pixel.
+        Parameters
+        ----------
+        map_shape : tuple of int
+            Shape ``(N, N)`` of the input map.
+        pixel_size : float
+            Pixel size in arcminutes per pixel.
         """
         self.map_shape = map_shape
         self.pixel_size = pixel_size
@@ -27,9 +51,7 @@ class PowerSpectrumAdjuster:
         self._precompute_grids()
 
     def _precompute_grids(self):
-        """
-        Precompute the 2D ell grid and radial bins.
-        """
+        """Precompute the 2-D ℓ grid and integer radial-bin indices."""
         inds = jnp.fft.fftfreq(self.N, d=1. / self.N)
         X, Y = jnp.meshgrid(inds, inds)
         self.R = jnp.sqrt(X**2 + Y**2)
@@ -41,14 +63,19 @@ class PowerSpectrumAdjuster:
     
     def compute_power_spectrum(self, image):
         """
-        Compute the 1D power spectrum from a given 2D image.
+        Compute the radially-binned 1-D power spectrum of a 2-D image.
 
-        Parameters:
-        - image: 2D numpy array, the input image.
+        Parameters
+        ----------
+        image : ndarray, shape (N, N)
+            Real-valued input map.
 
-        Returns:
-        - ell: 1D numpy array, the multipole moments.
-        - power_spectrum_1d: 1D numpy array, the power spectrum values in [rad^2].
+        Returns
+        -------
+        ell : ndarray
+            Multipole moment values for each radial bin.
+        power_spectrum_1d : ndarray
+            Azimuthally averaged power spectrum in units of rad².
         """
         # FFT using pyFFTW
         fft_object = pyfftw.builders.fft2(image, threads=8)
@@ -84,15 +111,24 @@ class PowerSpectrumAdjuster:
     
     def adjust_map_cls(self, input_map, target_cls, target_ells):
         """
-        Adjust the input map to match the target power spectrum.
+        Adjust ``input_map`` so its power spectrum matches ``target_cls``.
 
-        Parameters:
-        - input_map: 2D numpy array, the input map.
-        - target_cls: 1D numpy array, the target power spectrum values.
-        - target_ells: 1D numpy array, the target multipole moments.
+        Scales Fourier amplitudes by ``sqrt(C_ell_target / C_ell_input)``
+        while preserving Fourier phases.
 
-        Returns:
-        - adjusted_map: 2D numpy array, the adjusted map.
+        Parameters
+        ----------
+        input_map : ndarray, shape (N, N)
+            Real-valued input map.
+        target_cls : ndarray
+            Target power spectrum values.
+        target_ells : ndarray
+            Multipole moments corresponding to ``target_cls``.
+
+        Returns
+        -------
+        adjusted_map : ndarray, shape (N, N)
+            Map with rescaled Fourier amplitudes.
         """
         # Ensure the input map has zero mean
         # input_map = input_map - np.mean(input_map)
@@ -136,33 +172,40 @@ class PowerSpectrumAdjuster:
 
 class PowerSpectrum:
     """
-    Class for calculating power spectrum and generating fields with target power spectrum.
+    Flat-sky angular power spectrum computation and Cls-based field adjustment.
 
-    Args:
-        map (ndarray): Input map.
-        pixelsize (float): Size of each pixel in degrees.
+    Computes the binned angular power spectrum of a 2-D convergence map using
+    ``rfft2`` and adjusts Fourier amplitudes to match a target Cℓ curve while
+    preserving Fourier phases (and hence non-Gaussian structure).
 
-    Attributes:
-        pixelsize (float): Size of each pixel in degrees.
-        map_size (int): Size of the input map.
-        ell_min (float): Minimum value of ell.
-        ell_max (float): Maximum value of ell.
-        deltaell (int): Interval between ell values.
-        nbinsell (int): Number of ell bins.
-        pixel_size_rad_perpixel (float): Pixel size in radians per pixel.
-        lpix (float): Value of lpix.
-        lx (ndarray): Array of lx values.
-        ly (ndarray): Array of ly values.
-        l (ndarray): Array of l values.
-        ell_edges (ndarray): Array of ell bin edges.
+    Parameters
+    ----------
+    map : ndarray, shape (N, N)
+        Reference map used to set the ℓ grid and bin edges.
+    pixelsize : float
+        Pixel size in degrees.
 
-    Methods:
-        calculate_Cls(map): Calculates the power spectrum (Cls) of the input map.
-        generate_field_with_target_cls(input_field, target_cls, target_ells): Generates a field with the target power spectrum.
-
+    Attributes
+    ----------
+    ell_min, ell_max : float
+        Minimum and maximum multipole moments for the map.
+    nbinsell : int
+        Number of ℓ bins.
+    l : ndarray, shape (N, N//2+1)
+        2-D multipole-moment grid matching the ``rfft2`` output layout.
+    ell_edges : ndarray, shape (nbinsell+1,)
+        Bin edges for the power spectrum.
     """
 
     def __init__(self, map, pixelsize):
+        """
+        Parameters
+        ----------
+        map : ndarray, shape (N, N)
+            Reference map used to initialise the ℓ grid.
+        pixelsize : float
+            Pixel size in degrees.
+        """
         self.pixelsize = pixelsize
         self.map_size = map.shape[0]
         self.ell_min = 180. / (self.map_size * np.deg2rad(self.pixelsize))
@@ -178,14 +221,21 @@ class PowerSpectrum:
 
     def calculate_Cls(self, map):
         """
-        Calculates the power spectrum (Cls) of the input map.
+        Calculate the binned angular power spectrum of a map.
 
-        Args:
-            map (ndarray): Input map.
+        Parameters
+        ----------
+        map : ndarray, shape (N, N)
+            Real-valued input map.
 
-        Returns:
-            tuple: A tuple containing the ell edges, ell bins, and Cls values.
-
+        Returns
+        -------
+        ell_edges : ndarray, shape (nbinsell+1,)
+            Bin edges in multipole moment space.
+        ell_bins : ndarray, shape (nbinsell,)
+            Bin centres.
+        cls_values : ndarray, shape (nbinsell,)
+            Azimuthally averaged power spectrum in units of rad⁴.
         """
         map_ft = rfft2(map)
         power_spectrum = jnp.abs(map_ft) ** 2
@@ -208,20 +258,31 @@ class PowerSpectrum:
 
     def generate_field_with_target_cls(self, input_field, target_cls, target_ells):
         """
-        Generates a field with the target power spectrum.
+        Rescale Fourier amplitudes of ``input_field`` to match ``target_cls``.
 
-        Args:
-            input_field (ndarray): Input field.
-            target_cls (ndarray): Target power spectrum values.
-            target_ells (ndarray): Corresponding ell values for the target power spectrum.
+        Preserves Fourier phases so that non-Gaussian structure is retained.
+        Below-range ℓ modes use the large-scale (first) target Cℓ value;
+        above-range modes use the small-scale (last) value.
 
-        Returns:
-            ndarray: Generated field with the target power spectrum.
+        Parameters
+        ----------
+        input_field : ndarray, shape (N, N)
+            Real-valued input map.
+        target_cls : ndarray
+            Target power spectrum values.
+        target_ells : ndarray
+            Multipole moments corresponding to ``target_cls``.
 
-        Raises:
-            AssertionError: If the lengths of target_cls and target_ells are not equal.
-            AssertionError: If any value in target_cls is negative.
+        Returns
+        -------
+        ndarray, shape (N, N)
+            Adjusted field with power spectrum matching ``target_cls``.
 
+        Raises
+        ------
+        AssertionError
+            If ``len(target_cls) != len(target_ells)`` or any element of
+            ``target_cls`` is negative.
         """
         assert len(target_cls) == len(target_ells), "target_cls and target_ells must have the same length"
         assert jnp.all(target_cls >= 0), "All target_cls values must be non-negative"
@@ -268,15 +329,50 @@ class PowerSpectrum:
 
 
 def fourier_coordinate(x, y, map_size):
+    """
+    Compute the flat index into a row-major ``rfft2`` output array.
+
+    Parameters
+    ----------
+    x : int
+        Row index.
+    y : int
+        Column index.
+    map_size : int
+        Width of the map (number of columns).
+
+    Returns
+    -------
+    int
+        Flat index ``(map_size // 2 + 1) * x + y``.
+    """
     return (map_size // 2 + 1) * x + y
 
 def calculate_Cls_(map, angle, ell_min, ell_max, n_bins):
     """
-    map: the image from which the angular power spectra (Cls) has to be calculated
-    angle: side angle in the units of degree
-    ell_min: the minimum multipole moment to get the Cls
-    ell_max: the maximum multipole moment to get the Cls
-    n_bins: number of bins in the ells
+    Calculate the angular power spectrum of a map using JAX ``lax.fori_loop``.
+
+    Parameters
+    ----------
+    map : ndarray, shape (N, N)
+        Input convergence map.
+    angle : float
+        Field-of-view side length in degrees.
+    ell_min : float
+        Minimum multipole moment.
+    ell_max : float
+        Maximum multipole moment.
+    n_bins : int
+        Number of ℓ bins.
+
+    Returns
+    -------
+    ell_edges : ndarray, shape (n_bins+1,)
+        Bin edges.
+    ell_bins : ndarray, shape (n_bins,)
+        Bin centres.
+    cls_values : ndarray, shape (n_bins,)
+        Normalised angular power spectrum.
     """
     ell_min = jnp.array(ell_min)
     ell_max = jnp.array(ell_max)
@@ -325,18 +421,38 @@ def calculate_Cls_(map, angle, ell_min, ell_max, n_bins):
 # @partial(jax.jit, static_argnums=(1, 4, 5))
 def generate_field_with_target_cls_(input_field, angle, target_cls, target_ells, ell_max=40000, n_bins=50):
     """
-    Adjusts the power spectrum of an input field to match a target power spectrum.
+    Adjust the power spectrum of ``input_field`` to match ``target_cls``.
 
-    Parameters:
-    - input_field (jax.numpy.ndarray): The input field as a 2D JAX array.
-    - angle (float): The field of view in degrees.
-    - target_cls (jax.numpy.ndarray): Target power spectrum values.
-    - target_ells (jax.numpy.ndarray): Target multipole moments associated with target_cls.
-    - ell_max (int): Maximum multipole moment to consider.
-    - n_bins (int): Number of bins to use for the power spectrum calculation.
+    Standalone (non-method) version that accepts explicit field-of-view and
+    ℓ-range arguments.  Calls :func:`calculate_Cls` internally and uses the
+    same two-sided ``fill_value`` interpolation as
+    :meth:`PowerSpectrum.generate_field_with_target_cls`.
 
-    Returns:
-    - jax.numpy.ndarray: The adjusted input field, transformed to match the target power spectrum.
+    Parameters
+    ----------
+    input_field : jnp.ndarray, shape (N, N)
+        Real-valued 2-D input map.
+    angle : float
+        Field-of-view side length in degrees.
+    target_cls : jnp.ndarray
+        Target power spectrum values.
+    target_ells : jnp.ndarray
+        Multipole moments corresponding to ``target_cls``.
+    ell_max : int, optional
+        Maximum multipole moment.  Default is ``40000``.
+    n_bins : int, optional
+        Number of ℓ bins for the power spectrum calculation.  Default is ``50``.
+
+    Returns
+    -------
+    jnp.ndarray, shape (N, N)
+        Adjusted field whose power spectrum matches ``target_cls``.
+
+    Raises
+    ------
+    AssertionError
+        If ``len(target_cls) != len(target_ells)`` or any element of
+        ``target_cls`` is negative.
     """
     shape = input_field.shape
     assert len(target_cls) == len(target_ells), "target_cls and target_ells must have the same length"

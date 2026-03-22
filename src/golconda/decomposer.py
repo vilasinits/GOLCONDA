@@ -72,6 +72,13 @@ class WaveletDecomposer:
     """
 
     def __init__(self, num_scales: int = 3) -> None:
+        """
+        Parameters
+        ----------
+        num_scales : int, optional
+            Default number of decomposition scales used when ``num_scales``
+            is not supplied to :meth:`decompose`.  Default is ``3``.
+        """
         self.num_scales = num_scales
         self._filter_cache: dict = {}   # keyed by (image_shape, num_scales)
 
