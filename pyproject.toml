@@ -1,38 +1,58 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "GOLCONDA"
-version = "0.0.1"
-description = "Tool to generate kappa map"
+name = "golconda"
+version = "0.1.0"
+description = "Generator of Lensing Convergence with Optimized Non-Gaussian Distribution Adjustment"
 authors = [{ name = "Vilasini Tinnaneri Sreekanth" }]
 readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
 
 dependencies = [
-    "numpy",
-    "scipy",
-    "matplotlib",
-    "pandas",
+    "numpy>=1.24",
+    "scipy>=1.11",
+    "astropy>=5.0",
     "healpy",
-    "mpmath",
-    "tqdm",
-    "astropy",
-    "jax",
-    "pyccl",
+    "jax>=0.4",
     "pyfftw",
     "lenspack",
-    "scikit-learn",
-    "scikit-image"
+    "scikit-image",
+    "tqdm",
 ]
 
 [project.optional-dependencies]
-dev = [
+notebooks = [
+    "matplotlib",
     "jupyter",
     "notebook",
     "ipykernel",
-    "sphinx",
-    "sphinx-autodoc-typehints",
-    "sphinx-rtd-theme"
+    "pyccl",
 ]
+docs = [
+    "sphinx>=7",
+    "sphinx-rtd-theme",
+    "sphinx-autodoc-typehints",
+    "numpydoc",
+    "myst-parser",
+]
+dev = [
+    "golconda[notebooks,docs]",
+]
+
+[project.urls]
+"Source Code" = "https://github.com/vilasinits/GOLCONDA"
+
+[tool.setuptools.packages.find]
+where = ["src"]
