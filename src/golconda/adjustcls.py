@@ -230,8 +230,12 @@ class PowerSpectrum:
         _, ell_bins, field_cls = self.calculate_Cls(input_field)
 
         # Interpolate Cls
-        field_cls_interp = interp1d(ell_bins, field_cls, kind="linear", bounds_error=False, fill_value=field_cls[-1])
-        target_cls_interp = interp1d(target_ells, target_cls, kind="linear", bounds_error=False, fill_value=target_cls[-1])
+        # fill_value is a 2-tuple (below_range, above_range) so that low-ell extrapolation
+        # uses the large-scale (first) value rather than the high-ell tail.
+        field_cls_interp = interp1d(ell_bins, field_cls, kind="linear", bounds_error=False,
+                                    fill_value=(field_cls[0], field_cls[-1]))
+        target_cls_interp = interp1d(target_ells, target_cls, kind="linear", bounds_error=False,
+                                     fill_value=(target_cls[0], target_cls[-1]))
 
         Cl_field = field_cls_interp(self.l)
         Cl_target = target_cls_interp(self.l)
@@ -353,9 +357,11 @@ def generate_field_with_target_cls_(input_field, angle, target_cls, target_ells,
     l = jnp.sqrt(lx[np.newaxis, :]**2 + ly[:, np.newaxis]**2)
     
     # Interpolate Cls for the input field and the target
-    field_cls_interp = interp1d(ell_bins, field_cls, kind="linear", bounds_error=False, fill_value=target_cls[-1])
+    field_cls_interp = interp1d(ell_bins, field_cls, kind="linear", bounds_error=False,
+                                fill_value=(field_cls[0], field_cls[-1]))
     Cl_field = field_cls_interp(l)
-    target_cls_interp = interp1d(target_ells, target_cls, kind="linear", bounds_error=False, fill_value=target_cls[-1])
+    target_cls_interp = interp1d(target_ells, target_cls, kind="linear", bounds_error=False,
+                                 fill_value=(target_cls[0], target_cls[-1]))
     Cl_target = target_cls_interp(l)
     
     # Adjust the amplitude based on the target Cls

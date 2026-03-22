@@ -1,5 +1,7 @@
 # from utils.config import *
 import numpy as np
+import jax
+import jax.numpy as jnp
 
 
 def calculate_histogram_l1norm(image, mask, nbins, density=False):
@@ -39,14 +41,16 @@ def calculate_histogram_l1norm(image, mask, nbins, density=False):
     # Calculate the bin width (for normalization if density=True)
     bin_width = binedges[1] - binedges[0]
     total_pixels = np.prod(image.shape)
-    
+
     # Digitize the masked image to determine bin membership
     digitized = np.digitize(masked_image, binedges, right=False)
-    
-    # Calculate the L1 norm per bin
+
+    # L1 norm is always normalised per pixel per bin-width so it is portable
+    # across maps of different sizes.  When density=False the histogram is raw
+    # counts, but we still normalise l1_norm the same way so that adjust_map_l1
+    # can rescale it correctly for any output map size.
     bin_l1_norm = [
-        np.sum(np.abs(masked_image[digitized == i])) / (total_pixels * bin_width) if density else
-        np.sum(np.abs(masked_image[digitized == i]))
+        np.sum(np.abs(masked_image[digitized == i])) / (total_pixels * bin_width)
         for i in range(1, len(binedges))
     ]
     return np.array(binedges), np.array(bincenters), np.array(hist), np.array(bin_l1_norm)
@@ -70,14 +74,23 @@ def adjust_map_l1(input_image, mask, targetvalues, density=False):
     """
     # Retrieve target statistics
     bin_edges = targetvalues['binedges']
-    
+    bin_width = bin_edges[1] - bin_edges[0]
+    output_pixels = input_image.shape[0] * input_image.shape[1]
+
+    # l1_norm is always stored normalised per-pixel per-bin-width (see
+    # calculate_histogram_l1norm), so rescale to absolute counts for this
+    # output map regardless of density flag.
+    l1_scaling = output_pixels * bin_width
+    target_l1_norm = targetvalues['l1_norm'] * l1_scaling
+
     if density:
-        scaling_factor = np.abs(input_image.shape[0]*input_image.shape[1]*(bin_edges[1]-bin_edges[0]))
+        # histogram is a probability density (counts / total / bin_width), rescale to counts
+        target_histogram = targetvalues['histogram'] * l1_scaling
     else:
-        scaling_factor = 1
-        
-    target_histogram = targetvalues['histogram']*scaling_factor
-    target_l1_norm = targetvalues['l1_norm']*scaling_factor
+        # histogram is raw counts from the source map; rescale to this output map's pixel count.
+        # Avoid division by zero if source pixel count wasn't stored.
+        source_pixels = targetvalues.get('source_pixels', output_pixels)
+        target_histogram = targetvalues['histogram'] * (output_pixels / source_pixels)
     
     if mask is None:
         mask = np.ones_like(input_image)
@@ -201,7 +214,8 @@ def process_image(target, filter_type, nscales, nbins, decomposer_class, density
             'binedges': edges,
             'l1_norm': l1_norm,
             'bincenters': centers,
-            'sigma': sigma
+            'sigma': sigma,
+            'source_pixels': target_coefs[scale].size,
         }
 
     # Add power spectrum information
@@ -314,3 +328,156 @@ def adjust_pixel_values(image, mask, targetvalues, density=False):
     # Write back the adjusted pixel values to the original image
     image[mask_indices] = masked_pixel_values
     return image, total_error/np.max(l1_norm_target)
+
+
+# ---------------------------------------------------------------------------
+# JAX-accelerated L1 adjustment (GPU-ready)
+# ---------------------------------------------------------------------------
+
+@jax.jit
+def _adjust_l1_kernel(
+    sorted_vals: jnp.ndarray,
+    pixel_bin: jnp.ndarray,
+    target_l1_per_bin: jnp.ndarray,
+    bin_edges: jnp.ndarray,
+) -> jnp.ndarray:
+    """
+    Vectorised per-pixel L1 adjustment, JIT-compiled for GPU execution.
+
+    Replaces the Python bin loop in :func:`adjust_map_l1` with scatter-add
+    aggregates and element-wise operations that run entirely on the JAX device.
+
+    Parameters
+    ----------
+    sorted_vals : (M,) float array
+        Masked pixel values in ascending order.
+    pixel_bin : (M,) int array
+        Bin index for each sorted pixel.
+    target_l1_per_bin : (B,) float array
+        Target L1 norm for each bin (scaled to output map).
+    bin_edges : (B+1,) float array
+        Bin edge values for clipping.
+
+    Returns
+    -------
+    jnp.ndarray, shape (M,)
+        Adjusted sorted pixel values.
+    """
+    num_bins = target_l1_per_bin.shape[0]
+    pos_mask = sorted_vals >= 0.0
+
+    # Actual pixel count per bin (may differ from target histogram due to rounding)
+    actual_counts = jnp.zeros(num_bins).at[pixel_bin].add(1.0)
+
+    # Pass 1 — adjust positive values upward
+    current_l1 = jnp.zeros(num_bins).at[pixel_bin].add(jnp.abs(sorted_vals))
+    delta_per_bin = (target_l1_per_bin - current_l1) / jnp.maximum(actual_counts, 1.0)
+    vals = jnp.where(
+        pos_mask,
+        jnp.maximum(sorted_vals + delta_per_bin[pixel_bin], 0.0),
+        sorted_vals,
+    )
+
+    # Pass 2 — adjust negative values with remaining L1 budget
+    current_l1_2 = jnp.zeros(num_bins).at[pixel_bin].add(jnp.abs(vals))
+    remaining_l1 = target_l1_per_bin - current_l1_2
+    neg_counts = jnp.zeros(num_bins).at[pixel_bin].add((~pos_mask).astype(jnp.float32))
+    neg_adj_per_bin = remaining_l1 / jnp.maximum(neg_counts, 1.0)
+    vals = jnp.where(
+        ~pos_mask,
+        jnp.minimum(vals - neg_adj_per_bin[pixel_bin], 0.0),
+        vals,
+    )
+
+    # Clip to bin range
+    return jnp.clip(vals, bin_edges[pixel_bin], bin_edges[pixel_bin + 1])
+
+
+def adjust_map_l1_jax(input_image, mask, targetvalues, density=False):
+    """
+    JAX-accelerated version of :func:`adjust_map_l1`.
+
+    Replaces the per-bin Python loop with a fully vectorised kernel compiled
+    with ``@jax.jit``.  When JAX is configured for GPU (e.g.
+    ``pip install "jax[cuda12]"``), the sort, scatter-add aggregates, and all
+    per-pixel adjustments run on the device.
+
+    Parameters
+    ----------
+    input_image : ndarray, shape (N, M)
+        Input wavelet coefficient map for a given scale.
+    mask : ndarray or None
+        Boolean mask (1 = valid pixel).
+    targetvalues : dict
+        Same format as :func:`adjust_map_l1`:
+        ``'binedges'``, ``'histogram'``, ``'l1_norm'``, ``'source_pixels'``.
+    density : bool
+        Whether the stored histogram is a probability density.
+
+    Returns
+    -------
+    adjusted_image : ndarray
+    normalised_l1_error : float
+    """
+    bin_edges = targetvalues['binedges']
+    bin_width = bin_edges[1] - bin_edges[0]
+    output_pixels = input_image.shape[0] * input_image.shape[1]
+    num_bins = len(targetvalues['l1_norm'])
+
+    l1_scaling = output_pixels * bin_width
+    target_l1_norm = targetvalues['l1_norm'] * l1_scaling
+
+    if density:
+        target_histogram = targetvalues['histogram'] * l1_scaling
+    else:
+        source_pixels = targetvalues.get('source_pixels', output_pixels)
+        target_histogram = targetvalues['histogram'] * (output_pixels / source_pixels)
+
+    if mask is None:
+        mask = np.ones_like(input_image)
+
+    totpixels = np.prod(input_image.shape)
+    totmaskedpixels = int(np.count_nonzero(mask))
+    mask_indices = np.nonzero(mask)
+    ratio_masked_field = totmaskedpixels / totpixels
+
+    # Sort on JAX device (GPU when available)
+    input_masked = jnp.asarray(input_image[mask_indices])
+    sorted_indices = jnp.argsort(input_masked)
+    sorted_vals = input_masked[sorted_indices]
+
+    # Assign each rank to a bin using cumulative bin-size boundaries
+    bin_counts = jnp.round(
+        jnp.asarray(target_histogram * ratio_masked_field)
+    ).astype(jnp.int32)
+    cumulative = jnp.concatenate(
+        [jnp.array([0], dtype=jnp.int32), jnp.cumsum(bin_counts)]
+    )
+    # searchsorted on the interior breakpoints gives the bin index for each rank
+    ranks = jnp.arange(totmaskedpixels, dtype=jnp.int32)
+    pixel_bin = jnp.minimum(
+        jnp.searchsorted(cumulative[1:-1], ranks, side='right'),
+        num_bins - 1,
+    )
+
+    target_l1_per_bin = jnp.asarray(target_l1_norm * ratio_masked_field)
+    bin_edges_jax = jnp.asarray(bin_edges)
+
+    # Run JIT-compiled kernel
+    adjusted_sorted = _adjust_l1_kernel(
+        sorted_vals, pixel_bin, target_l1_per_bin, bin_edges_jax
+    )
+
+    # Unsort: scatter adjusted values back to their original positions
+    adjusted_masked = jnp.zeros_like(input_masked).at[sorted_indices].set(adjusted_sorted)
+
+    # Diagnostic error
+    adjusted_l1_per_bin = jnp.zeros(num_bins).at[pixel_bin].add(jnp.abs(adjusted_sorted))
+    total_l1_error = float(jnp.sum(jnp.abs(target_l1_per_bin - adjusted_l1_per_bin)))
+    normalised_error = total_l1_error / float(jnp.maximum(jnp.max(target_l1_per_bin), 1e-12))
+
+    # Write back to a writable CPU array
+    adjusted_image = np.copy(input_image)
+    adjusted_image[mask_indices] = np.array(adjusted_masked)
+
+    return adjusted_image, normalised_error

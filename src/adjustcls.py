@@ -53,13 +53,10 @@ class PowerSpectrumAdjuster:
         # FFT using pyFFTW
         fft_object = pyfftw.builders.fft2(image, threads=8)
         fft_map = fft_object()
-        
-        # Normalize the FFT by N^2
-        fft_map_normalized = fft_map / (self.N**2)
-        
+
         # Shift the zero frequency to the center
-        data_ft_shifted = jnp.fft.fftshift(np.abs(fft_map_normalized))
-        
+        data_ft_shifted = jnp.fft.fftshift(np.abs(fft_map))
+
         # Compute the 2D power spectrum
         power_spectrum_2d = (data_ft_shifted**2)
 
@@ -72,13 +69,12 @@ class PowerSpectrumAdjuster:
         nyquist = self.N // 2
         powerspectrum = radial_profile[:nyquist]
 
-        # 1D Power spectrum in [rad^2]
-        power_spectrum_1d = powerspectrum * (self.pix_to_rad**2)
+        # 1D power spectrum: C_ell = (theta_pix / N)^2 * mean_ring(|FFT|^2)
+        power_spectrum_1d = powerspectrum * (self.pix_to_rad / self.N) ** 2
 
-        # Multipole moments (ell)
+        # Multipole moments: ell = 2*pi*k / (N * theta_pix)
         ks = jnp.arange(power_spectrum_1d.shape[0])
-        # ell = 2. * np.pi * ks / (self.pix_to_rad * self.N)
-        ell = 4. * np.pi * np.pi * ks 
+        ell = 2. * np.pi * ks / (self.N * self.pix_to_rad)
         return ell, power_spectrum_1d
 
     
@@ -165,14 +161,13 @@ class PowerSpectrum:
     def __init__(self, map, pixelsize):
         self.pixelsize = pixelsize
         self.map_size = map.shape[0]
-        self.ell_min = 180. / (self.map_size * np.deg2rad(self.pixelsize))
-        self.ell_max = 90 / np.deg2rad(self.pixelsize)
+        self.pixel_size_rad_perpixel = np.pi * self.pixelsize / (180. * 60.)  # arcmin to rad
+        self.ell_min = 2. * np.pi / (self.map_size * self.pixel_size_rad_perpixel)
+        self.ell_max = np.pi / self.pixel_size_rad_perpixel
         self.deltaell = 200
         self.nbinsell = int((self.ell_max - self.ell_min) / self.deltaell)
-        self.pixel_size_rad_perpixel = np.pi * self.pixelsize / (180. * 60.)
-        self.lpix = 2. * np.pi / self.pixel_size_rad_perpixel / 360.
-        self.lx = rfftfreq(self.map_size) * self.map_size * self.lpix
-        self.ly = fftfreq(self.map_size) * self.map_size * self.lpix
+        self.lx = 2. * np.pi * rfftfreq(self.map_size) / self.pixel_size_rad_perpixel
+        self.ly = 2. * np.pi * fftfreq(self.map_size) / self.pixel_size_rad_perpixel
         self.l = jnp.sqrt(self.lx[np.newaxis, :] ** 2 + self.ly[:, np.newaxis] ** 2)
         self.ell_edges = jnp.linspace(self.ell_min, self.ell_max, num=self.nbinsell + 1)
 
@@ -203,7 +198,7 @@ class PowerSpectrum:
         # Compute Cls
         cls_values = jnp.where(hits > 0, power_l / hits, 0.0)
         ell_bins = 0.5 * (self.ell_edges[1:] + self.ell_edges[:-1])
-        normalization = (jnp.deg2rad(self.pixelsize * self.map_size) / self.map_size ** 2) ** 2
+        normalization = (self.pixel_size_rad_perpixel / self.map_size) ** 2
         return self.ell_edges, ell_bins, cls_values * normalization
 
     def generate_field_with_target_cls(self, input_field, target_cls, target_ells):
@@ -230,8 +225,12 @@ class PowerSpectrum:
         _, ell_bins, field_cls = self.calculate_Cls(input_field)
 
         # Interpolate Cls
-        field_cls_interp = interp1d(ell_bins, field_cls, kind="linear", bounds_error=False, fill_value=field_cls[-1])
-        target_cls_interp = interp1d(target_ells, target_cls, kind="linear", bounds_error=False, fill_value=target_cls[-1])
+        # fill_value is a 2-tuple (below_range, above_range) so that low-ell extrapolation
+        # uses the large-scale (first) value rather than the high-ell tail.
+        field_cls_interp = interp1d(ell_bins, field_cls, kind="linear", bounds_error=False,
+                                    fill_value=(field_cls[0], field_cls[-1]))
+        target_cls_interp = interp1d(target_ells, target_cls, kind="linear", bounds_error=False,
+                                     fill_value=(target_cls[0], target_cls[-1]))
 
         Cl_field = field_cls_interp(self.l)
         Cl_target = target_cls_interp(self.l)
@@ -353,9 +352,11 @@ def generate_field_with_target_cls_(input_field, angle, target_cls, target_ells,
     l = jnp.sqrt(lx[np.newaxis, :]**2 + ly[:, np.newaxis]**2)
     
     # Interpolate Cls for the input field and the target
-    field_cls_interp = interp1d(ell_bins, field_cls, kind="linear", bounds_error=False, fill_value=target_cls[-1])
+    field_cls_interp = interp1d(ell_bins, field_cls, kind="linear", bounds_error=False,
+                                fill_value=(field_cls[0], field_cls[-1]))
     Cl_field = field_cls_interp(l)
-    target_cls_interp = interp1d(target_ells, target_cls, kind="linear", bounds_error=False, fill_value=target_cls[-1])
+    target_cls_interp = interp1d(target_ells, target_cls, kind="linear", bounds_error=False,
+                                 fill_value=(target_cls[0], target_cls[-1]))
     Cl_target = target_cls_interp(l)
     
     # Adjust the amplitude based on the target Cls

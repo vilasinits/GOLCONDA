@@ -1,175 +1,214 @@
-# from utils.config import *
 import numpy as np
+import scipy.special
+import jax
 import jax.numpy as jnp
-from jax.numpy.fft import fftfreq, ifft2, fftn
-from lenspack.image.transforms import starlet2d
+from jax.numpy.fft import fftfreq
+from functools import partial
 from typing import List
-import scipy 
+from lenspack.image.transforms import starlet2d
+
+
+# ---------------------------------------------------------------------------
+# JIT-compiled scan kernel (no scipy inside — pure JAX FFTs)
+# ---------------------------------------------------------------------------
+
+@partial(jax.jit, static_argnums=())
+def _apply_filters_scan(
+    field_ft: jnp.ndarray,
+    filters: jnp.ndarray,
+) -> jnp.ndarray:
+    """
+    Apply a pre-computed stack of top-hat filters via ``lax.scan``.
+
+    The entire multi-scale loop — all ``irfft2`` calls and difference steps —
+    compiles into a single XLA program, eliminating Python overhead per scale.
+
+    Parameters
+    ----------
+    field_ft : (N, N//2+1) complex array
+        ``rfft2`` of the input map.
+    filters : (num_scales, N, N//2+1) float array
+        Fourier-space top-hat filters for each scale, pre-computed with
+        ``scipy.special.j1`` at full float64 accuracy.
+
+    Returns
+    -------
+    jnp.ndarray, shape (num_scales+1, N, N)
+        ``[w_1, …, w_nscales, coarse]``
+    """
+    def step(coarse, filt):
+        new_coarse = jnp.fft.irfft2(field_ft * filt)
+        wavelet = coarse - new_coarse
+        return new_coarse, wavelet
+
+    init_coarse = jnp.fft.irfft2(field_ft)
+    final_coarse, wavelet_stack = jax.lax.scan(step, init_coarse, filters)
+    return jnp.concatenate([wavelet_stack, final_coarse[None]], axis=0)
+
+
+# ---------------------------------------------------------------------------
+# Public class
+# ---------------------------------------------------------------------------
+
 class WaveletDecomposer:
+    """
+    Multi-scale wavelet decomposer (top-hat or starlet).
+
+    Top-hat optimisations
+    ---------------------
+    * ``scipy.special.j1`` is called **once** per unique (shape, num_scales)
+      pair, at full float64 accuracy, to compute all scale filters up front.
+    * The filters are cached; repeated calls with the same map shape and
+      number of scales skip the Bessel-function step entirely.
+    * ``rfft2`` / ``irfft2`` (half-spectrum) replace the full complex FFT,
+      halving memory and compute for real-valued maps.
+    * The scale loop is compiled into a single XLA program via
+      ``jax.lax.scan`` — no Python overhead per scale.
+
+    Parameters
+    ----------
+    num_scales : int
+        Default number of decomposition scales.
+    """
+
     def __init__(self, num_scales: int = 3) -> None:
-        """
-        Initialize the WaveletDecomposer class with optional static parameter initialization.
-
-        Parameters:
-        -----------
-        num_scales : int, optional
-            The number of decomposition scales to be used. Defaults to 3.
-        """
         self.num_scales = num_scales
-        self.precomputed_tophat_filters = {}
+        self._filter_cache: dict = {}   # keyed by (image_shape, num_scales)
 
-    def set_size_dependent_params(self, image_shape, L = None):
+    # ------------------------------------------------------------------
+    # Grid setup
+    # ------------------------------------------------------------------
+
+    def set_size_dependent_params(self, image_shape, L=None):
         """
-        Initialize size-dependent parameters (frequency grids, pixel size, etc.) based on the image shape.
+        Precompute the |k| grid for a given image shape.
 
-        Parameters:
-        -----------
-        image_shape : Tuple[int, int]
-            The shape of the input image.
-        L : int, optional
-            The length scale of the map. Defaults to the size of the input map.
+        Called automatically by ``decompose`` when ``recalculate_params=True``.
+
+        Parameters
+        ----------
+        image_shape : tuple of int
+        L : float, optional
+            Physical length of one side. Defaults to ``image_shape[0]``.
         """
         self.image_shape = image_shape
-        self.L = L or image_shape[0]  # Set the length scale to the size of the image if not provided
-        self.dx = self.L / image_shape[0]  # Calculate pixel size
-        self.kx, self.ky = fftfreq(image_shape[0], self.dx), fftfreq(image_shape[1], self.dx)
-        self.kx, self.ky = jnp.meshgrid(self.kx, self.ky, indexing='ij')
-        self.k_squared = (self.kx**2 + self.ky**2)
-        self.precomputed_tophat_filters.clear()
+        self.L = L or image_shape[0]
+        self.dx = self.L / image_shape[0]
 
-    def set_image(self, input_map: np.ndarray) -> None:
+        # rfft2 output has shape (N, N//2+1):
+        #   axis-0 (rows) → fftfreq  (N values)
+        #   axis-1 (cols) → rfftfreq (N//2+1 values)
+        krows = fftfreq(image_shape[0], self.dx)
+        kcols = jnp.fft.rfftfreq(image_shape[1], self.dx)
+        kr_grid, kc_grid = jnp.meshgrid(krows, kcols, indexing='ij')
+        self.k_mag = 2.0 * jnp.pi * jnp.sqrt(kr_grid ** 2 + kc_grid ** 2)
+
+    # ------------------------------------------------------------------
+    # Filter helpers
+    # ------------------------------------------------------------------
+
+    def _compute_filters(self, num_scales: int) -> jnp.ndarray:
         """
-        Set the input image and compute its Fourier transform.
+        Compute and cache the (num_scales, N, N//2+1) filter stack.
 
-        Parameters:
-        -----------
-        input_map : np.ndarray
-            The new input image or map for decomposition.
+        Uses ``scipy.special.j1`` for float64 accuracy.  The result is
+        cached so repeated calls with the same arguments are free.
         """
-        self.input_map = input_map
-        self.field_ft = fftn(self.input_map)  # Compute the Fourier transform of the input map
+        key = (self.image_shape, num_scales)
+        if key not in self._filter_cache:
+            scale_exps = 2.0 ** np.arange(1, num_scales + 1)          # (S,)
+            k_np = np.asarray(self.k_mag)                               # (N, N//2+1)
+            u_all = k_np[None, :, :] * scale_exps[:, None, None]       # (S, N, N//2+1)
+            u_safe = np.where(u_all == 0.0, 1e-7, u_all)
+            filters = 2.0 * scipy.special.j1(u_safe) / u_safe          # (S, N, N//2+1)
+            self._filter_cache[key] = jnp.asarray(filters)
+        return self._filter_cache[key]
 
-    @staticmethod
-    def top_hat_window_fourier(k):
+    def get_top_hat_filter(self, window_radius: float) -> jnp.ndarray:
         """
-        Compute the top-hat window function in Fourier space.
+        Return the top-hat Fourier filter for a single radius (public API).
 
-        Parameters:
-        -----------
-        k : np.ndarray
-            The frequency grid in Fourier space.
-
-        Returns:
-        --------
-        np.ndarray
-            The top-hat filter in Fourier space.
-        """
-        k = jnp.where(k == 0, 1e-7, k)  # Avoid division by zero
-        return 2.0 * scipy.special.j1(k) / k
-
-    def get_top_hat_filter(self, window_radius: float) -> np.ndarray:
-        """
-        Retrieve or compute the top-hat filter in Fourier space for a given radius.
-
-        Parameters:
-        -----------
+        Parameters
+        ----------
         window_radius : float
-            The radius for the top-hat filter in Fourier space.
-
-        Returns:
-        --------
-        np.ndarray
-            The top-hat filter for the specified radius.
+            Top-hat radius in pixel units.
         """
-        k = 2 * jnp.pi * jnp.sqrt(self.k_squared)
-        filter_window = self.top_hat_window_fourier(k * window_radius)
-        return filter_window
-    
-    def get_th_smooth_map(self, map, window_radius: float):
-        """
-        Retrieve or compute the top-hat filter in Fourier space for a given radius.
+        k_np = np.asarray(self.k_mag)
+        u = k_np * window_radius
+        u_safe = np.where(u == 0.0, 1e-7, u)
+        return jnp.asarray(2.0 * scipy.special.j1(u_safe) / u_safe)
 
-        Parameters:
-        -----------
+    def get_th_smooth_map(self, map_in: np.ndarray, window_radius: float) -> np.ndarray:
+        """
+        Smooth ``map_in`` with the top-hat filter of ``window_radius``.
+
+        Parameters
+        ----------
+        map_in : ndarray, shape (N, M)
         window_radius : float
-            The radius for the top-hat filter in Fourier space.
+            Radius in pixel units.
 
-        Returns:
-        --------
-        np.ndarray
-            The top-hat filter for the specified radius.
+        Returns
+        -------
+        np.ndarray, same shape as ``map_in``.
         """
-        self.set_size_dependent_params(map.shape)
-        self.set_image(map)
-        filter_window = self.get_top_hat_filter(window_radius)
-        mapft = self.field_ft * filter_window
-        map_smooth = ifft2(mapft).real
-        return map_smooth
+        self.set_size_dependent_params(map_in.shape)
+        field_ft = jnp.fft.rfft2(jnp.asarray(map_in))
+        filt = self.get_top_hat_filter(window_radius)
+        return np.asarray(jnp.fft.irfft2(field_ft * filt))
+
+    # ------------------------------------------------------------------
+    # Decomposition
+    # ------------------------------------------------------------------
 
     def decompose_with_tophat(self) -> np.ndarray:
         """
-        Perform wavelet decomposition using the top-hat filter.
+        Top-hat wavelet decomposition of ``self.input_map``.
 
-        Returns:
-        --------
-        np.ndarray
-            The wavelet coefficients and coarse scale image.
+        Filters are computed/retrieved from cache, then the FFT scan is
+        run under JIT.
+
+        Returns
+        -------
+        np.ndarray, shape (num_scales+1, N, M)
         """
-        coarse_image = self.input_map  # Coarse scale image (initially the input map)
-        wavelet_coeffs = []  # List to store wavelet coefficients
-        for scale in range(1, self.num_scales + 1):
-            # Apply the top-hat filter in Fourier space for the current scale (2^scale)
-            coarse_image_ft = self.field_ft * self.get_top_hat_filter(2**scale)
-            coarse_image_new = ifft2(coarse_image_ft).real  # Inverse Fourier transform to obtain the new coarse image
-            wavelet_coeff = coarse_image - coarse_image_new  # Compute the wavelet coefficient
-            coarse_image = coarse_image_new  # Update coarse image for the next iteration
-            wavelet_coeffs.append(wavelet_coeff)
-        wavelet_coeffs.append(coarse_image)  # Append the final coarse image
-        return np.array(wavelet_coeffs)
+        filters = self._compute_filters(self.num_scales)
+        field_ft = jnp.fft.rfft2(jnp.asarray(self.input_map))
+        return np.array(_apply_filters_scan(field_ft, filters))
 
     def decompose_with_starlet(self) -> np.ndarray:
-        """
-        Perform wavelet decomposition using the starlet transform.
-
-        Returns:
-        --------
-        np.ndarray
-            The wavelet coefficients and coarse scale image.
-        """
+        """Starlet (à trous) wavelet decomposition via lenspack."""
         return starlet2d(self.input_map, self.num_scales)
 
     def reconstruct(self, coefficients: List[np.ndarray]) -> np.ndarray:
-        """
-        Reconstruct image from wavelet coefficients by summing all scales.
-
-        Args:
-            coefficients: List of coefficient arrays from decompose()
-
-        Returns:
-            Reconstructed image array
-        """
-        # Simple reconstruction by summing all scales
+        """Reconstruct map from wavelet coefficients by summing all scales."""
         return np.sum(coefficients, axis=0)
 
-    def decompose(self, input_map: np.ndarray, num_scales = 1, filter_type: str = 'tophat', recalculate_params: bool = True):
+    def decompose(
+        self,
+        input_map: np.ndarray,
+        num_scales: int = 1,
+        filter_type: str = 'tophat',
+        recalculate_params: bool = True,
+    ) -> np.ndarray:
         """
-        Perform wavelet decomposition based on the chosen filter type for the given image.
+        Decompose ``input_map`` into wavelet scales.
 
-        Parameters:
-        -----------
-        input_map : np.ndarray
-            The image to decompose.
-        num_scales : int, optional
-            Number of scales for decomposition. If None, the class default is used.
-        filter_type : str, optional
-            The type of filter to use for decomposition ('tophat' or 'starlet'). Default is 'tophat'.
-        recalculate_params : bool, optional
-            If True, recalculates the static parameters (L, kx, ky) based on the image size. Default is False.
+        Parameters
+        ----------
+        input_map : ndarray
+            2-D real-valued input map.
+        num_scales : int
+            Number of wavelet scales (coarse residual is always appended).
+        filter_type : {'tophat', 'starlet'}
+        recalculate_params : bool
+            Re-derive the frequency grid from the map shape.  Set ``False``
+            only when calling repeatedly with identically-shaped maps.
 
-        Returns:
-        --------
-        np.ndarray
-            The wavelet coefficients and coarse scale image.
+        Returns
+        -------
+        np.ndarray, shape (num_scales+1, N, M)
+            ``[w_1, w_2, …, w_nscales, coarse]``
         """
         if num_scales is not None:
             self.num_scales = num_scales
@@ -177,23 +216,22 @@ class WaveletDecomposer:
         if recalculate_params:
             self.set_size_dependent_params(input_map.shape)
 
-        self.set_image(input_map)
+        self.input_map = input_map
 
         if filter_type == 'tophat':
             return self.decompose_with_tophat()
         elif filter_type == 'starlet':
             return self.decompose_with_starlet()
         else:
-            raise ValueError(f"Unknown filter type: {filter_type}. Supported values are 'tophat' and 'starlet'.")
+            raise ValueError(
+                f"Unknown filter type: {filter_type!r}. "
+                "Supported values: 'tophat', 'starlet'."
+            )
 
 
 if __name__ == "__main__":
-    input_image_1 = np.random.rand(256, 256)
-    input_image_2 = np.random.rand(256, 256)
-
-    decomposer = WaveletDecomposer()
-
-    wavelet_coefficients_1 = decomposer.decompose(input_image_1, num_scales=5, filter_type='tophat', recalculate_params=True)
-
-    wavelet_coefficients_2 = decomposer.decompose(input_image_2, num_scales=5, filter_type='starlet', recalculate_params=False)
-
+    input_image = np.random.rand(256, 256)
+    d = WaveletDecomposer()
+    coeffs = d.decompose(input_image, num_scales=5, filter_type='tophat')
+    print("Shape:", coeffs.shape)
+    print("Reconstruction error:", np.max(np.abs(coeffs.sum(axis=0) - input_image)))
